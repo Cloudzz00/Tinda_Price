@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Add Supplier - TINDA-PRICE{% endblock %}
+{% block content %}
+  <h1>Add Supplier</h1>
+  <form method="post" class="stacked-form">
+    <label>Supplier name <input type="text" name="name" required></label>
+    <label>Contact info <input type="text" name="contact"></label>
+    <button type="submit">Add supplier</button>
+  </form>
+{% endblock %}

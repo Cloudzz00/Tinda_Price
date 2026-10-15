@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Variance Report - TINDA-PRICE{% endblock %}
+{% block content %}
+  <h1>Variance-Flagging Report</h1>
+  {% set flagged = results|selectattr('flagged')|list %}
+  <p class="subtitle">{{ flagged|length }} of {{ results|length }} product(s) flagged for price review.</p>
+
+  {% if results %}
+    <table class="data-table">
+      <thead>
+        <tr><th>Product</th><th>Cost</th><th>Price</th><th>Margin %</th><th>Threshold %</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+          <tr class="{{ 'row-flagged' if r.flagged else '' }}">
+            <td><a href="{{ url_for('product_detail', product_id=r.product_id) }}">{{ r.name }}</a></td>
+            <td>{{ '%.2f'|format(r.supplier_cost) }}</td>
+            <td>{{ '%.2f'|format(r.retail_price) }}</td>
+            <td>{{ '%.2f'|format(r.variance_pct) }}</td>
+            <td>{{ '%.2f'|format(r.threshold_pct) }}</td>
+            <td>
+              {% if r.flagged %}
+                <span class="badge badge-warning">Review needed</span>
+              {% else %}
+                <span class="badge badge-ok">Healthy</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No products recorded yet.</p>
+  {% endif %}
+{% endblock %}

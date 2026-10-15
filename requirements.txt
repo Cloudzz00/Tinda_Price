@@ -1,3 +1,1 @@
-# TINDA-PRICE uses only the Python standard library (sqlite3, dataclasses,
-# unittest). This file is kept for tooling that expects one; there are no
-# third-party runtime dependencies to install.
+Flask>=3.0
