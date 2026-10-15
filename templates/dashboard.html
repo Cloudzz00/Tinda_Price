@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - TINDA-PRICE{% endblock %}
+{% block content %}
+  <section class="stats">
+    <div class="stat-card">
+      <span class="stat-number">{{ total_products }}</span>
+      <span class="stat-label">Products tracked</span>
+    </div>
+    <div class="stat-card {{ 'stat-warning' if flagged_count else '' }}">
+      <span class="stat-number">{{ flagged_count }}</span>
+      <span class="stat-label">Flagged for price review</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-number">{{ suppliers|length }}</span>
+      <span class="stat-label">Suppliers</span>
+    </div>
+  </section>
+
+  {% if not products %}
+    <div class="empty-state">
+      <p>No products recorded yet.</p>
+      <form method="post" action="{{ url_for('load_seed_data') }}">
+        <button type="submit">Load sample sari-sari-store data</button>
+      </form>
+    </div>
+  {% else %}
+    <h2>Products</h2>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Barcode</th>
+          <th>Supplier</th>
+          <th>Cost</th>
+          <th>Price</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+          <tr>
+            <td>{{ p['name'] }}</td>
+            <td>{{ p['category'] }}</td>
+            <td>{{ p['barcode'] or '-' }}</td>
+            <td>{{ p['supplier_name'] }}</td>
+            <td>{{ '%.2f'|format(p['supplier_cost']) }}</td>
+            <td>{{ '%.2f'|format(p['retail_price']) }}</td>
+            <td><a href="{{ url_for('product_detail', product_id=p['id']) }}">View</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}

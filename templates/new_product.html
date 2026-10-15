@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Add Product - TINDA-PRICE{% endblock %}
+{% block content %}
+  <h1>Add Product</h1>
+  {% if not suppliers %}
+    <p class="muted">No suppliers yet. <a href="{{ url_for('new_supplier') }}">Add one first</a>.</p>
+  {% else %}
+    <form method="post" class="stacked-form">
+      <label>Barcode (scan or type)
+        <input type="text" name="barcode" placeholder="e.g. 4800016641234">
+      </label>
+      <label>Product name <input type="text" name="name" required></label>
+      <label>Category <input type="text" name="category"></label>
+      <label>Supplier
+        <select name="supplier_id" required>
+          {% for s in suppliers %}
+            <option value="{{ s['id'] }}">{{ s['name'] }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Supplier cost <input type="number" step="0.01" name="supplier_cost" required></label>
+      <label>Retail price <input type="number" step="0.01" name="retail_price" required></label>
+      <label>Minimum margin threshold % <input type="number" step="0.01" name="variance_threshold_pct" value="15"></label>
+      <button type="submit">Add product</button>
+    </form>
+  {% endif %}
+{% endblock %}

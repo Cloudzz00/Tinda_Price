@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Search - TINDA-PRICE{% endblock %}
+{% block content %}
+  <h1>Search Results</h1>
+  {% if query %}
+    <p class="subtitle">Query: "{{ query }}"</p>
+    {% if results %}
+      <table class="data-table">
+        <thead>
+          <tr><th>Name</th><th>Category</th><th>Barcode</th><th>Supplier</th><th>Cost</th><th>Price</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for p in results %}
+            <tr>
+              <td>{{ p['name'] }}</td>
+              <td>{{ p['category'] }}</td>
+              <td>{{ p['barcode'] or '-' }}</td>
+              <td>{{ p['supplier_name'] }}</td>
+              <td>{{ '%.2f'|format(p['supplier_cost']) }}</td>
+              <td>{{ '%.2f'|format(p['retail_price']) }}</td>
+              <td><a href="{{ url_for('product_detail', product_id=p['id']) }}">View</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">No matching products.</p>
+    {% endif %}
+  {% else %}
+    <p class="muted">Type a product name, category, or scan a barcode using the search box above.</p>
+  {% endif %}
+{% endblock %}

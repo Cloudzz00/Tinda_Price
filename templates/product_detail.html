@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ product['name'] }} - TINDA-PRICE{% endblock %}
+{% block content %}
+  <h1>{{ product['name'] }}</h1>
+  <p class="subtitle">
+    {{ product['category'] }} &middot; Barcode: {{ product['barcode'] or '-' }}
+    &middot; Supplier: {{ product['supplier_name'] }}
+  </p>
+
+  <section class="card-grid">
+    <div class="card">
+      <h3>Current Pricing</h3>
+      <p>Supplier cost: <strong>{{ '%.2f'|format(product['supplier_cost']) }}</strong></p>
+      <p>Retail price: <strong>{{ '%.2f'|format(product['retail_price']) }}</strong></p>
+      <p>Margin: <strong>{{ '%.2f'|format(variance_result.variance_pct) }}%</strong>
+        (minimum required: {{ '%.2f'|format(variance_result.threshold_pct) }}%)</p>
+      {% if variance_result.flagged %}
+        <p class="badge badge-warning">Flagged for price review</p>
+      {% else %}
+        <p class="badge badge-ok">Margin healthy</p>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('update_price', product_id=product['id']) }}" class="inline-form">
+        <label>New supplier cost <input type="number" step="0.01" name="supplier_cost" placeholder="unchanged"></label>
+        <label>New retail price <input type="number" step="0.01" name="retail_price" placeholder="unchanged"></label>
+        <button type="submit">Update price</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Short-Term Forecast</h3>
+      {% if forecast_result %}
+        <p>Based on {{ forecast_result.periods_used }} recorded price point(s):</p>
+        <p>Moving-average forecast: <strong>{{ forecast_result.moving_average }}</strong></p>
+        <p>Linear-regression forecast: <strong>{{ forecast_result.linear_regression }}</strong></p>
+        <p class="muted">Analytical guidance only &mdash; not a guaranteed future price.</p>
+      {% else %}
+        <p class="muted">Not enough price history yet for a forecast (need at least 2 records).</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h3>Record a Sale</h3>
+      <form method="post" action="{{ url_for('record_sale', product_id=product['id']) }}" class="inline-form">
+        <label>Quantity <input type="number" name="quantity" value="1" required></label>
+        <label>Sale price
+          <input type="number" step="0.01" name="sale_price" value="{{ product['retail_price'] }}" required>
+        </label>
+        <button type="submit">Record sale</button>
+      </form>
+    </div>
+  </section>
+
+  <h2>Price History</h2>
+  {% if history %}
+    <table class="data-table">
+      <thead><tr><th>Recorded at</th><th>Supplier cost</th><th>Retail price</th></tr></thead>
+      <tbody>
+        {% for h in history %}
+          <tr>
+            <td>{{ h['recorded_at'] }}</td>
+            <td>{{ '%.2f'|format(h['supplier_cost']) }}</td>
+            <td>{{ '%.2f'|format(h['retail_price']) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No history yet.</p>
+  {% endif %}
+
+  <h2>Recent Sales</h2>
+  {% if transactions %}
+    <table class="data-table">
+      <thead><tr><th>Date</th><th>Quantity</th><th>Sale price</th></tr></thead>
+      <tbody>
+        {% for t in transactions %}
+          <tr>
+            <td>{{ t['transaction_date'] }}</td>
+            <td>{{ t['quantity'] }}</td>
+            <td>{{ '%.2f'|format(t['sale_price']) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No sales recorded yet.</p>
+  {% endif %}
+{% endblock %}
