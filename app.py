@@ -12,6 +12,7 @@ from database import DEFAULT_DB_PATH, init_db
 import repository
 import search as search_module
 import seed as seed_module
+import real_data as real_data_module
 import variance
 import forecasting
 
@@ -136,6 +137,12 @@ def create_app():
     def load_seed_data():
         seed_module.seed()
         flash("Sample data loaded.", "success")
+        return redirect(url_for("dashboard"))
+
+    @app.route("/seed-real-data", methods=["POST"])
+    def load_real_data():
+        real_data_module.load()
+        flash("Real Philippine market data loaded (World Bank RTFP, Metro Manila).", "success")
         return redirect(url_for("dashboard"))
 
     return app
