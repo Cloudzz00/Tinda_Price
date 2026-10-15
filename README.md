@@ -25,7 +25,10 @@ served through a Flask web application instead of a terminal-only tool.
 `seed.py` loads sample sari-sari-store data (products, suppliers, a short
 price history) for a quick pilot demo, matching the Opportunities &
 Migration phase's plan to encode existing price data — triggered from
-the dashboard's "Load sample data" button when the database is empty.
+the dashboard's "Load sample data" button.
+
+`real_data.py` loads **actual Philippine retail prices** instead of
+synthetic numbers — see [Real Philippine market data](#real-philippine-market-data) below.
 
 ## Requirements
 
@@ -56,6 +59,35 @@ Typical demo flow:
    configured threshold and need a price review
 5. From a product page, update its supplier cost/retail price (logged
    to history automatically) or record a sale
+
+## Real Philippine market data
+
+Alongside the synthetic demo data, the dashboard has a **Load real market
+data** button that seeds products from actual published Philippine
+retail prices instead of made-up numbers:
+
+- **Source:** [World Bank Real-Time Food Price Monitoring (Philippines)](https://microdata.worldbank.org/catalog/6172),
+  dataset version 2025-11-24.
+- **Scope:** Metro Manila market, monthly retail price per kilogram (or
+  per piece for eggs) for 9 items — rice, eggs, garlic, red onions,
+  tomatoes, cabbage, carrots, sweet potatoes, and mung beans — from
+  November 2024 through November 2025.
+- **File:** `data/ph_food_prices_metro_manila.csv` (extracted from the
+  World Bank's full national CSV, which is too large to ship in the
+  repo). Columns: `price_date, item, retail_price_php`.
+- **Supplier cost caveat:** the dataset publishes only the modeled
+  retail (selling) price — not a per-store supplier/wholesale cost,
+  since that figure genuinely only exists in each store's own purchase
+  records (the exact gap TINDA-PRICE exists to close). `real_data.py`
+  locks each product's supplier cost at 15% below its earliest price in
+  the series (Nov 2024) and leaves it unchanged, standing in for a store
+  that priced at a healthy margin a year ago and hasn't revisited its
+  cost basis since. The retail-price trend itself is the real published
+  series, unmodified — so the forecasting module's moving-average and
+  linear-regression projections are computed on genuine market data
+  (e.g. rice's well-documented 2025 price decline), and the
+  variance-flagging module surfaces real margin drift rather than a
+  scripted example.
 
 ## Running the tests
 

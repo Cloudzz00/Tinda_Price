@@ -16,12 +16,31 @@
     </div>
   </section>
 
+  <section class="card-grid">
+    <div class="card">
+      <h3>Sample demo data</h3>
+      <p class="muted">A small, synthetic sari-sari-store catalog for trying out the system end to end.</p>
+      <form method="post" action="{{ url_for('load_seed_data') }}">
+        <button type="submit">Load sample data</button>
+      </form>
+    </div>
+    <div class="card">
+      <h3>Real Philippine market data</h3>
+      <p class="muted">
+        Actual monthly retail prices (rice, eggs, garlic, onions, tomatoes, and more)
+        for Metro Manila, Nov 2024&ndash;Nov 2025, from the
+        <a href="https://microdata.worldbank.org/catalog/6172" target="_blank" rel="noopener">World Bank Real-Time Food Price Monitoring</a> dataset.
+        Supplier cost is locked at each item's earliest price in the series to demonstrate variance-flagging on genuine price drift.
+      </p>
+      <form method="post" action="{{ url_for('load_real_data') }}">
+        <button type="submit">Load real market data</button>
+      </form>
+    </div>
+  </section>
+
   {% if not products %}
     <div class="empty-state">
-      <p>No products recorded yet.</p>
-      <form method="post" action="{{ url_for('load_seed_data') }}">
-        <button type="submit">Load sample sari-sari-store data</button>
-      </form>
+      <p>No products recorded yet. Use one of the options above to get started.</p>
     </div>
   {% else %}
     <h2>Products</h2>
