@@ -9,16 +9,28 @@
 <body>
   <header class="topbar">
     <a class="brand" href="{{ url_for('dashboard') }}">TINDA-PRICE</a>
-    <form class="search-form" action="{{ url_for('search') }}" method="get">
-      <input type="text" name="q" placeholder="Search by name or category" value="{{ request.args.get('q', '') }}">
-      <button type="submit">Search</button>
-    </form>
-    <nav>
-      <a href="{{ url_for('dashboard') }}">Dashboard</a>
-      <a href="{{ url_for('variance_report') }}">Variance Report</a>
-      <a href="{{ url_for('new_product') }}">Add Product</a>
-      <a href="{{ url_for('new_supplier') }}">Add Supplier</a>
-    </nav>
+    {% if current_user %}
+      <form class="search-form" action="{{ url_for('search') }}" method="get">
+        <input type="text" name="q" placeholder="Search by name or category" value="{{ request.args.get('q', '') }}">
+        <button type="submit">Search</button>
+      </form>
+      <nav>
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('variance_report') }}">Variance Report</a>
+        {% if current_user.role == 'admin' %}
+          <a href="{{ url_for('new_product') }}">Add Product</a>
+          <a href="{{ url_for('new_supplier') }}">Add Supplier</a>
+          <a href="{{ url_for('list_users') }}">Users</a>
+        {% endif %}
+      </nav>
+      <div class="user-menu">
+        <span class="user-chip">{{ current_user.display_name or current_user.username }}
+          <span class="role-tag">{{ role_labels[current_user.role] }}</span></span>
+        <form method="post" action="{{ url_for('logout') }}">
+          <button type="submit" class="btn-logout">Log out</button>
+        </form>
+      </div>
+    {% endif %}
   </header>
 
   <main>

@@ -43,6 +43,15 @@ CREATE TABLE IF NOT EXISTS transactions (
     sale_price REAL NOT NULL,
     transaction_date TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    display_name TEXT NOT NULL DEFAULT '',
+    role TEXT NOT NULL CHECK (role IN ('admin', 'supplier', 'store_owner')),
+    supplier_id INTEGER REFERENCES suppliers(id)
+);
 """
 
 

@@ -21,6 +21,7 @@ served through a Flask web application instead of a terminal-only tool.
 | Variance-Flagging Module | `variance.py` | Computes the % margin between supplier cost and retail price per product and flags items whose margin has dropped below a configurable minimum threshold, needing a price review. |
 | Trend-Analysis Forecasting Module | `forecasting.py` | Projects short-term price movement from price history using a simple moving average and a linear-regression trend line. |
 | Web interface | `app.py`, `templates/`, `static/`, `dashboard_metrics.py` | The "Rapid Retrieval Interface" / store terminal from the Technology Architecture phase — an analytics dashboard (price-update calendar, margin chart, risk donut), product pages, and variance report reachable from any device on the store's network. |
+| Role-Based Access Control | `auth.py`, `accounts.py` | Session-based login with three roles (admin, supplier, store owner), each scoped to what they're actually responsible for — see [Role-based access](#role-based-access) below. |
 
 `real_data.py` loads the system's only data source: **actual Philippine
 retail prices**, not synthetic numbers — see
@@ -45,23 +46,56 @@ python app.py
 ```
 
 Then open **http://localhost:5000** in a browser. On first run it
-creates `tinda_price.db` in the project folder.
+creates `tinda_price.db` in the project folder and three demo accounts
+(see [Role-based access](#role-based-access)) — you'll land on a login
+page first.
 
 Typical demo flow:
 
-1. Dashboard — click **Load real market data** to load real Philippine
-   retail prices (see below)
+1. Log in as **admin** (`admin` / `admin123`), then click **Load real
+   market data** to load real Philippine retail prices (see below)
 2. The dashboard's stat cards, "Needs Price Review" list, price-update
    calendar, margin chart, and risk donut all update to reflect it;
    use the category/supplier filters to narrow any of them
-3. Use the search box (top bar) to look up a product by name, category,
-   or barcode
+3. Use the search box (top bar) to look up a product by name or category
 4. Open a product page to view its current price, price history, and
    short-term forecast (moving average + linear regression)
 5. **Variance Report** — see every product's margin against its
    configured threshold
-6. From a product page, update its supplier cost/retail price (logged
-   to history automatically) or record a sale
+6. Log out and back in as **supplier** (`supplier` / `supplier123`) to
+   see cost-only editing, then as **owner** (`owner` / `owner123`) to
+   see price-only editing and sale recording — demonstrating the
+   workflow the variance-flagging module is built around (see below)
+
+## Role-based access
+
+Three roles, matching how a real store/supplier relationship works:
+
+| Role | Can do | Can't do |
+|---|---|---|
+| **Admin** | Manage suppliers, products, user accounts, and variance thresholds; full read access to everything | — |
+| **Supplier** | Update the **supplier cost** of the products tied to their own supplier record; view their own products, history, and forecasts | Touch retail price; see or edit another supplier's products; add suppliers/products/users; record sales |
+| **Store Owner** | Set **retail price**; record sales; view the full dashboard, reports, and forecasts | Touch supplier cost; manage suppliers/products/users |
+
+This isn't just an access-control checkbox — it mirrors the actual
+workflow TINDA-PRICE's variance-flagging module exists for: a supplier
+reports a cost change (updates their product's cost), the system
+recomputes the margin and flags it if needed, and the store owner
+reviews the **Needs Price Review** list and adjusts the retail price.
+Every permission boundary is enforced server-side in `app.py`
+(`auth.login_required` / `auth.roles_required`), not just hidden in the
+UI — a role-correct form field is also defense in depth, not the only
+line of defense.
+
+Demo accounts (seeded automatically, see `accounts.py`):
+
+| Username | Password | Role |
+|---|---|---|
+| `admin` | `admin123` | Admin |
+| `owner` | `owner123` | Store Owner |
+| `supplier` | `supplier123` | Supplier (auto-linked to the real-data supplier once it's loaded) |
+
+An admin can create more accounts from the **Users** page.
 
 ## Real Philippine market data
 
@@ -99,8 +133,11 @@ python -m unittest discover -v
 ```
 
 Tests cover the variance-flagging math, both forecasting methods, the
-repository/search layer (against a temporary SQLite database), and the
-Flask routes (dashboard, add supplier/product, search, variance report).
+repository/search layer (against a temporary SQLite database), password
+hashing and demo-account seeding, and the Flask routes — including the
+role boundaries themselves (a supplier can't touch retail price or
+another supplier's products, a store owner can't manage the catalog,
+only an admin reaches the Users page, and so on).
 
 ## Design notes
 
@@ -120,3 +157,9 @@ Flask routes (dashboard, add supplier/product, search, variance report).
   `search.py`, `variance.py`, `forecasting.py`) has no dependency on how
   it's presented, so the same modules back the web UI today and could
   back a different front end later without changes.
+- **Auth is scoped to a classroom demo.** Passwords are hashed
+  (`werkzeug.security`) and permissions are enforced server-side, but
+  the demo credentials are intentionally public (see the table above),
+  the session secret key is a hardcoded string, and there's no
+  password-reset or account-lockout flow. Treat it as a correct
+  access-control model, not a production auth system.

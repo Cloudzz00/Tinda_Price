@@ -7,8 +7,10 @@
       <p>TINDA-PRICE &middot; {{ today_label }}</p>
     </div>
     <div class="banner-actions">
-      <a class="btn btn-ghost" href="{{ url_for('new_product') }}">+ Add Product</a>
-      <a class="btn btn-ghost" href="{{ url_for('new_supplier') }}">+ Add Supplier</a>
+      {% if current_user.role == 'admin' %}
+        <a class="btn btn-ghost" href="{{ url_for('new_product') }}">+ Add Product</a>
+        <a class="btn btn-ghost" href="{{ url_for('new_supplier') }}">+ Add Supplier</a>
+      {% endif %}
     </div>
   </section>
 
@@ -22,14 +24,16 @@
         {% endfor %}
       </select>
     </label>
-    <label>Supplier
-      <select name="supplier_id" onchange="this.form.submit()">
-        <option value="">All</option>
-        {% for s in suppliers %}
-          <option value="{{ s['id'] }}" {{ 'selected' if supplier_filter == s['id']|string else '' }}>{{ s['name'] }}</option>
-        {% endfor %}
-      </select>
-    </label>
+    {% if current_user.role != 'supplier' %}
+      <label>Supplier
+        <select name="supplier_id" onchange="this.form.submit()">
+          <option value="">All</option>
+          {% for s in suppliers %}
+            <option value="{{ s['id'] }}" {{ 'selected' if supplier_filter == s['id']|string else '' }}>{{ s['name'] }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    {% endif %}
     <span class="filter-count">{{ total_products }} product{{ '' if total_products == 1 else 's' }}</span>
   </form>
 
@@ -169,7 +173,7 @@
     </div>
   </section>
 
-  {% if not all_products %}
+  {% if not all_products and current_user.role == 'admin' %}
     <section class="card-grid">
       <div class="card">
         <h3>Real Philippine market data</h3>
@@ -188,7 +192,11 @@
 
   {% if not products %}
     <div class="empty-state">
-      <p>{{ "No products match this filter." if all_products else "No products loaded yet. Use the option above to get started." }}</p>
+      {% if not all_products %}
+        <p>{{ "No products loaded yet. Use the option above to get started." if current_user.role == 'admin' else "No products loaded yet. Ask an admin to load the market data." }}</p>
+      {% else %}
+        <p>No products match this filter.</p>
+      {% endif %}
     </div>
   {% else %}
     <h2>Products</h2>

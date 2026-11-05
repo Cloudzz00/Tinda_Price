@@ -90,6 +90,14 @@ def update_prices(product_id, supplier_cost=None, retail_price=None, db_path=DEF
         )
 
 
+def update_threshold(product_id, variance_threshold_pct, db_path=DEFAULT_DB_PATH):
+    with get_connection(db_path) as conn:
+        conn.execute(
+            "UPDATE products SET variance_threshold_pct = ? WHERE id = ?",
+            (variance_threshold_pct, product_id),
+        )
+
+
 def get_price_history(product_id, db_path=DEFAULT_DB_PATH):
     with get_connection(db_path) as conn:
         return conn.execute(
@@ -105,7 +113,8 @@ def list_all_price_history(db_path=DEFAULT_DB_PATH):
     calendar."""
     with get_connection(db_path) as conn:
         return conn.execute(
-            """SELECT price_history.*, products.name AS product_name
+            """SELECT price_history.*, products.name AS product_name,
+                      products.supplier_id AS product_supplier_id
                FROM price_history JOIN products ON price_history.product_id = products.id
                ORDER BY price_history.recorded_at DESC"""
         ).fetchall()

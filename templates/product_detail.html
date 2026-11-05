@@ -22,11 +22,26 @@
         <p class="badge badge-ok">Margin healthy</p>
       {% endif %}
 
-      <form method="post" action="{{ url_for('update_price', product_id=product['id']) }}" class="inline-form">
-        <label>New supplier cost <input type="number" step="0.01" name="supplier_cost" placeholder="unchanged"></label>
-        <label>New retail price <input type="number" step="0.01" name="retail_price" placeholder="unchanged"></label>
-        <button type="submit">Update price</button>
-      </form>
+      {% if current_user.role in ('admin', 'supplier', 'store_owner') %}
+        <form method="post" action="{{ url_for('update_price', product_id=product['id']) }}" class="inline-form">
+          {% if current_user.role in ('admin', 'supplier') %}
+            <label>New supplier cost <input type="number" step="0.01" name="supplier_cost" placeholder="unchanged"></label>
+          {% endif %}
+          {% if current_user.role in ('admin', 'store_owner') %}
+            <label>New retail price <input type="number" step="0.01" name="retail_price" placeholder="unchanged"></label>
+          {% endif %}
+          <button type="submit">Update price</button>
+        </form>
+      {% endif %}
+
+      {% if current_user.role == 'admin' %}
+        <form method="post" action="{{ url_for('update_threshold', product_id=product['id']) }}" class="inline-form">
+          <label>Minimum margin threshold %
+            <input type="number" step="0.01" name="variance_threshold_pct" value="{{ variance_result.threshold_pct }}" required>
+          </label>
+          <button type="submit">Update threshold</button>
+        </form>
+      {% endif %}
     </div>
 
     <div class="card">
@@ -41,16 +56,18 @@
       {% endif %}
     </div>
 
-    <div class="card">
-      <h3>Record a Sale</h3>
-      <form method="post" action="{{ url_for('record_sale', product_id=product['id']) }}" class="inline-form">
-        <label>Quantity <input type="number" name="quantity" value="1" required></label>
-        <label>Sale price
-          <input type="number" step="0.01" name="sale_price" value="{{ product['retail_price'] }}" required>
-        </label>
-        <button type="submit">Record sale</button>
-      </form>
-    </div>
+    {% if current_user.role in ('admin', 'store_owner') %}
+      <div class="card">
+        <h3>Record a Sale</h3>
+        <form method="post" action="{{ url_for('record_sale', product_id=product['id']) }}" class="inline-form">
+          <label>Quantity <input type="number" name="quantity" value="1" required></label>
+          <label>Sale price
+            <input type="number" step="0.01" name="sale_price" value="{{ product['retail_price'] }}" required>
+          </label>
+          <button type="submit">Record sale</button>
+        </form>
+      </div>
+    {% endif %}
   </section>
 
   <h2>Price History</h2>
