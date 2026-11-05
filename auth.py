@@ -64,6 +64,19 @@ def set_user_supplier(user_id, supplier_id, db_path=DEFAULT_DB_PATH):
         conn.execute("UPDATE users SET supplier_id = ? WHERE id = ?", (supplier_id, user_id))
 
 
+def update_display_name(user_id, display_name, db_path=DEFAULT_DB_PATH):
+    with get_connection(db_path) as conn:
+        conn.execute("UPDATE users SET display_name = ? WHERE id = ?", (display_name, user_id))
+
+
+def update_password(user_id, new_password, db_path=DEFAULT_DB_PATH):
+    with get_connection(db_path) as conn:
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (generate_password_hash(new_password), user_id),
+        )
+
+
 def verify_password(user, password):
     return check_password_hash(user["password_hash"], password)
 

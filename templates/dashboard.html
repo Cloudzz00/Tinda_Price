@@ -119,7 +119,8 @@
             {% for e in selected_entries %}
               <li>
                 <a href="{{ url_for('product_detail', product_id=e['product_id']) }}">{{ e['product_name'] }}</a>
-                <span class="muted">cost {{ '%.2f'|format(e['supplier_cost']) }} &middot; price {{ '%.2f'|format(e['retail_price']) }}</span>
+                <span class="muted">cost {{ '%.2f'|format(e['supplier_cost']) }} &middot; price {{ '%.2f'|format(e['retail_price']) }}
+                  {% if e['updated_by_name'] or e['updated_by_username'] %} &middot; by {{ e['updated_by_name'] or e['updated_by_username'] }}{% endif %}</span>
               </li>
             {% endfor %}
           </ul>

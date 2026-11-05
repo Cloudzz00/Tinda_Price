@@ -8,53 +8,105 @@
 </head>
 <body>
   {% if request.endpoint != 'login' %}
-    <header class="topbar">
-      <a class="brand" href="{{ url_for('dashboard') }}">TINDA-PRICE</a>
-      {% if current_user %}
-        <form class="search-form" action="{{ url_for('search') }}" method="get">
-          <input type="text" name="q" placeholder="Search by name or category" value="{{ request.args.get('q', '') }}">
-          <button type="submit">Search</button>
-        </form>
-        <nav>
-          <a href="{{ url_for('dashboard') }}">Dashboard</a>
-          <a href="{{ url_for('variance_report') }}">Variance Report</a>
-          {% if current_user.role == 'admin' %}
-            <a href="{{ url_for('new_product') }}">Add Product</a>
-            <a href="{{ url_for('new_supplier') }}">Add Supplier</a>
-            <a href="{{ url_for('list_users') }}">Users</a>
-          {% endif %}
-        </nav>
-        <div class="user-menu">
-          <span class="user-chip">{{ current_user.display_name or current_user.username }}
-            <span class="role-tag">{{ role_labels[current_user.role] }}</span></span>
-          <form method="post" action="{{ url_for('logout') }}">
-            <button type="submit" class="btn-logout">Log out</button>
-          </form>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <span class="sidebar-brand-mark">&#8369;</span>
+          <span class="sidebar-brand-text">
+            <strong>TINDA-PRICE</strong>
+            <span>Retail Price Intelligence</span>
+          </span>
         </div>
-      {% endif %}
-    </header>
+
+        <nav class="sidebar-nav">
+          <div class="nav-section-label">Main</div>
+          <a class="nav-link {{ 'active' if request.endpoint == 'dashboard' else '' }}" href="{{ url_for('dashboard') }}">
+            <span class="nav-icon">&#128202;</span> Dashboard
+          </a>
+          <a class="nav-link {{ 'active' if request.endpoint == 'variance_report' else '' }}" href="{{ url_for('variance_report') }}">
+            <span class="nav-icon">&#9888;</span> Variance Report
+          </a>
+
+          {% if current_user.role == 'admin' %}
+            <div class="nav-section-label">Manage</div>
+            <a class="nav-link {{ 'active' if request.endpoint == 'list_users' else '' }}" href="{{ url_for('list_users') }}">
+              <span class="nav-icon">&#128101;</span> Users
+            </a>
+          {% endif %}
+
+          <div class="nav-section-label">Account</div>
+          <a class="nav-link {{ 'active' if request.endpoint == 'profile' else '' }}" href="{{ url_for('profile') }}">
+            <span class="nav-icon">&#9881;</span> My Profile
+          </a>
+        </nav>
+
+        <form method="post" action="{{ url_for('logout') }}" class="sidebar-logout">
+          <button type="submit">&#8592; Log out</button>
+        </form>
+      </aside>
+
+      <div class="app-main">
+        <header class="app-topbar">
+          <form class="search-form" action="{{ url_for('search') }}" method="get">
+            <input type="text" name="q" placeholder="Search by name or category" value="{{ request.args.get('q', '') }}">
+            <button type="submit">Search</button>
+          </form>
+
+          <details class="notif-bell">
+            <summary>
+              <span class="bell-icon">&#128276;</span>
+              {% if notifications_count %}<span class="bell-badge">{{ notifications_count }}</span>{% endif %}
+            </summary>
+            <div class="notif-panel">
+              <strong>Needs price review</strong>
+              {% if notifications_items %}
+                <ul>
+                  {% for item in notifications_items %}
+                    <li>
+                      <a href="{{ url_for('product_detail', product_id=item.product_id) }}">{{ item.name }}</a>
+                      <span class="badge badge-{{ item.risk_tier }}">{{ item.variance_pct }}%</span>
+                    </li>
+                  {% endfor %}
+                </ul>
+                <a class="notif-view-all" href="{{ url_for('variance_report') }}">View all ({{ notifications_count }})</a>
+              {% else %}
+                <p class="muted">Nothing needs review right now.</p>
+              {% endif %}
+            </div>
+          </details>
+
+          <a class="user-chip-link" href="{{ url_for('profile') }}">
+            <span class="avatar-circle">{{ (current_user.display_name or current_user.username)[:1]|upper }}</span>
+            <span class="user-chip-text">
+              <strong>{{ current_user.display_name or current_user.username }}</strong>
+              <span class="role-tag">{{ role_labels[current_user.role] }}</span>
+            </span>
+          </a>
+        </header>
   {% endif %}
 
-  <main class="{{ 'main-bare' if request.endpoint == 'login' else '' }}">
-    {% block flashes %}
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          <div class="flashes">
-            {% for category, message in messages %}
-              <div class="flash flash-{{ category }}">{{ message }}</div>
-            {% endfor %}
-          </div>
-        {% endif %}
-      {% endwith %}
-    {% endblock %}
+        <main class="{{ 'main-bare' if request.endpoint == 'login' else '' }}">
+          {% block flashes %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <div class="flashes">
+                  {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+          {% endblock %}
 
-    {% block content %}{% endblock %}
-  </main>
+          {% block content %}{% endblock %}
+        </main>
 
   {% if request.endpoint != 'login' %}
-    <footer>
-      An Integrated Retail Price Intelligence and Predictive Analytics Architecture for Dynamic Price Monitoring in Small Stores.
-    </footer>
+        <footer>
+          An Integrated Retail Price Intelligence and Predictive Analytics Architecture for Dynamic Price Monitoring in Small Stores.
+        </footer>
+      </div>
+    </div>
   {% endif %}
 </body>
 </html>

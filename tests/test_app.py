@@ -192,6 +192,91 @@ class TestWebApp(unittest.TestCase):
         response = self.client.get("/users")
         self.assertIn(b"Add User", response.data)
 
+    # ---- Profile --------------------------------------------------------
+
+    def test_update_display_name(self):
+        self._login("owner", "owner123")
+        response = self.client.post(
+            "/profile", data={"action": "update_profile", "display_name": "Owner Renamed"},
+            follow_redirects=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        user = auth.get_user_by_username("owner")
+        self.assertEqual(user["display_name"], "Owner Renamed")
+
+    def test_change_password_requires_correct_current_password(self):
+        self._login("owner", "owner123")
+        response = self.client.post(
+            "/profile",
+            data={
+                "action": "change_password",
+                "current_password": "wrong-password",
+                "new_password": "newpass1",
+                "confirm_password": "newpass1",
+            },
+            follow_redirects=True,
+        )
+        self.assertIn(b"Current password is incorrect", response.data)
+
+    def test_change_password_enforces_complexity(self):
+        self._login("owner", "owner123")
+        response = self.client.post(
+            "/profile",
+            data={
+                "action": "change_password",
+                "current_password": "owner123",
+                "new_password": "short",
+                "confirm_password": "short",
+            },
+            follow_redirects=True,
+        )
+        self.assertIn(b"at least 8 characters", response.data)
+
+    def test_change_password_succeeds_and_can_log_in_with_new_password(self):
+        self._login("owner", "owner123")
+        self.client.post(
+            "/profile",
+            data={
+                "action": "change_password",
+                "current_password": "owner123",
+                "new_password": "newpass1",
+                "confirm_password": "newpass1",
+            },
+        )
+        self.client.post("/logout")
+        response = self._login("owner", "newpass1")
+        self.assertIn(b"Welcome", response.data)
+
+    # ---- Notifications bell ------------------------------------------------
+
+    def test_notification_bell_shows_flagged_count(self):
+        product, _ = self._add_product_as_admin()
+        # Cost 10, price 15 -> 50% margin, well above the 15% threshold: healthy.
+        self._login("admin", "admin123")
+        response = self.client.get("/")
+        self.assertNotIn(b"bell-badge", response.data)
+
+        # Push the margin under the threshold so it gets flagged.
+        self.client.post(f"/products/{product['id']}/update-price", data={"retail_price": "10.5"})
+        response = self.client.get("/")
+        self.assertIn(b"bell-badge", response.data)
+
+    # ---- Audit trail (who made the change) ---------------------------------
+
+    def test_price_update_records_who_made_it(self):
+        product, _ = self._add_product_as_admin()
+        self._login("owner", "owner123")
+        self.client.post(f"/products/{product['id']}/update-price", data={"retail_price": "20.0"})
+        history = repository.get_price_history(product["id"])
+        self.assertEqual(history[-1]["updated_by_name"], "Store Owner")
+
+    def test_sale_records_who_recorded_it(self):
+        product, _ = self._add_product_as_admin()
+        self._login("admin", "admin123")
+        self.client.post(f"/products/{product['id']}/sell", data={"quantity": "1", "sale_price": "15.0"})
+        transactions = repository.list_transactions(product["id"])
+        self.assertEqual(transactions[0]["recorded_by_name"], "System Admin")
+
 
 if __name__ == "__main__":
     unittest.main()

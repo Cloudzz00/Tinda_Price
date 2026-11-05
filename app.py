@@ -34,6 +34,15 @@ def _scope_products_for_user(products, user):
     return products
 
 
+def _notifications_for_user(user):
+    """The flagged products this user can see, worst margin first --
+    backs the top bar's notification bell on every page."""
+    products = _scope_products_for_user(repository.list_products(), user)
+    results = [variance.evaluate_product(p) for p in products]
+    flagged = sorted([r for r in results if r.flagged], key=lambda r: r.variance_pct)
+    return flagged, flagged[:5]
+
+
 def create_app():
     app = Flask(__name__)
     app.secret_key = "tinda-price-dev-secret"  # fine for a local/offline student prototype
@@ -51,7 +60,12 @@ def create_app():
 
     @app.context_processor
     def _inject_user():
-        return {"current_user": g.get("user"), "role_labels": auth.ROLE_LABELS}
+        context = {"current_user": g.get("user"), "role_labels": auth.ROLE_LABELS}
+        if g.get("user") and request.endpoint != "login":
+            all_flagged, top_flagged = _notifications_for_user(g.user)
+            context["notifications_count"] = len(all_flagged)
+            context["notifications_items"] = top_flagged
+        return context
 
     # ---- Auth ---------------------------------------------------------
 
@@ -197,6 +211,7 @@ def create_app():
                     supplier_cost=float(request.form["supplier_cost"]),
                     retail_price=float(request.form["retail_price"]),
                     variance_threshold_pct=float(request.form.get("variance_threshold_pct") or 15.0),
+                    created_by=g.user["id"],
                 )
             except (KeyError, ValueError) as exc:
                 flash(f"Could not add product: {exc}", "error")
@@ -261,7 +276,8 @@ def create_app():
         if cost is None and price is None:
             flash("Enter a new value to update.", "error")
         else:
-            repository.update_prices(product_id, supplier_cost=cost, retail_price=price)
+            repository.update_prices(product_id, supplier_cost=cost, retail_price=price,
+                                      updated_by=g.user["id"])
             flash("Price updated and logged to history.", "success")
         return redirect(url_for("product_detail", product_id=product_id))
 
@@ -286,7 +302,7 @@ def create_app():
         except (KeyError, ValueError):
             flash("Enter a valid quantity and sale price.", "error")
             return redirect(url_for("product_detail", product_id=product_id))
-        repository.add_transaction(product_id, quantity, sale_price)
+        repository.add_transaction(product_id, quantity, sale_price, recorded_by=g.user["id"])
         flash("Sale recorded.", "success")
         return redirect(url_for("product_detail", product_id=product_id))
 
@@ -317,6 +333,40 @@ def create_app():
             suppliers=repository.list_suppliers(),
             roles=auth.ROLES,
         )
+
+    # ---- Profile (every role) --------------------------------------------
+
+    @app.route("/profile", methods=["GET", "POST"])
+    @auth.login_required
+    def profile():
+        if request.method == "POST":
+            action = request.form.get("action")
+            if action == "update_profile":
+                display_name = request.form.get("display_name", "").strip()
+                if not display_name:
+                    flash("Display name can't be empty.", "error")
+                else:
+                    auth.update_display_name(g.user["id"], display_name)
+                    flash("Profile updated.", "success")
+                return redirect(url_for("profile"))
+
+            if action == "change_password":
+                current_password = request.form.get("current_password", "")
+                new_password = request.form.get("new_password", "")
+                confirm_password = request.form.get("confirm_password", "")
+                has_letter = any(c.isalpha() for c in new_password)
+                has_digit = any(c.isdigit() for c in new_password)
+                if not auth.verify_password(g.user, current_password):
+                    flash("Current password is incorrect.", "error")
+                elif len(new_password) < 8 or not has_letter or not has_digit:
+                    flash("New password must be at least 8 characters with a letter and a number.", "error")
+                elif new_password != confirm_password:
+                    flash("New password and confirmation don't match.", "error")
+                else:
+                    auth.update_password(g.user["id"], new_password)
+                    flash("Password changed.", "success")
+                return redirect(url_for("profile"))
+        return render_template("profile.html")
 
     @app.route("/users/new", methods=["POST"])
     @auth.roles_required("admin")

@@ -31,7 +31,8 @@ def list_suppliers(db_path=DEFAULT_DB_PATH):
 # ---- Products --------------------------------------------------------------
 
 def add_product(barcode, name, category, supplier_id, supplier_cost,
-                 retail_price, variance_threshold_pct=15.0, db_path=DEFAULT_DB_PATH):
+                 retail_price, variance_threshold_pct=15.0, created_by=None,
+                 db_path=DEFAULT_DB_PATH):
     with get_connection(db_path) as conn:
         cur = conn.execute(
             """INSERT INTO products
@@ -43,9 +44,9 @@ def add_product(barcode, name, category, supplier_id, supplier_cost,
         )
         product_id = cur.lastrowid
         conn.execute(
-            """INSERT INTO price_history (product_id, supplier_cost, retail_price, recorded_at)
-               VALUES (?, ?, ?, ?)""",
-            (product_id, supplier_cost, retail_price, _now()),
+            """INSERT INTO price_history (product_id, supplier_cost, retail_price, recorded_at, updated_by)
+               VALUES (?, ?, ?, ?, ?)""",
+            (product_id, supplier_cost, retail_price, _now(), created_by),
         )
         return product_id
 
@@ -69,7 +70,8 @@ def get_product(product_id, db_path=DEFAULT_DB_PATH):
         ).fetchone()
 
 
-def update_prices(product_id, supplier_cost=None, retail_price=None, db_path=DEFAULT_DB_PATH):
+def update_prices(product_id, supplier_cost=None, retail_price=None, updated_by=None,
+                   db_path=DEFAULT_DB_PATH):
     """Update a product's current cost/price and log the change to history."""
     with get_connection(db_path) as conn:
         row = conn.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
@@ -84,9 +86,9 @@ def update_prices(product_id, supplier_cost=None, retail_price=None, db_path=DEF
             (new_cost, new_price, product_id),
         )
         conn.execute(
-            """INSERT INTO price_history (product_id, supplier_cost, retail_price, recorded_at)
-               VALUES (?, ?, ?, ?)""",
-            (product_id, new_cost, new_price, _now()),
+            """INSERT INTO price_history (product_id, supplier_cost, retail_price, recorded_at, updated_by)
+               VALUES (?, ?, ?, ?, ?)""",
+            (product_id, new_cost, new_price, _now(), updated_by),
         )
 
 
@@ -101,8 +103,11 @@ def update_threshold(product_id, variance_threshold_pct, db_path=DEFAULT_DB_PATH
 def get_price_history(product_id, db_path=DEFAULT_DB_PATH):
     with get_connection(db_path) as conn:
         return conn.execute(
-            """SELECT * FROM price_history WHERE product_id = ?
-               ORDER BY recorded_at ASC""",
+            """SELECT price_history.*, users.display_name AS updated_by_name,
+                      users.username AS updated_by_username
+               FROM price_history LEFT JOIN users ON price_history.updated_by = users.id
+               WHERE price_history.product_id = ?
+               ORDER BY price_history.recorded_at ASC""",
             (product_id,),
         ).fetchall()
 
@@ -114,20 +119,24 @@ def list_all_price_history(db_path=DEFAULT_DB_PATH):
     with get_connection(db_path) as conn:
         return conn.execute(
             """SELECT price_history.*, products.name AS product_name,
-                      products.supplier_id AS product_supplier_id
-               FROM price_history JOIN products ON price_history.product_id = products.id
+                      products.supplier_id AS product_supplier_id,
+                      users.display_name AS updated_by_name,
+                      users.username AS updated_by_username
+               FROM price_history
+               JOIN products ON price_history.product_id = products.id
+               LEFT JOIN users ON price_history.updated_by = users.id
                ORDER BY price_history.recorded_at DESC"""
         ).fetchall()
 
 
 # ---- Transactions ----------------------------------------------------------
 
-def add_transaction(product_id, quantity, sale_price, db_path=DEFAULT_DB_PATH):
+def add_transaction(product_id, quantity, sale_price, recorded_by=None, db_path=DEFAULT_DB_PATH):
     with get_connection(db_path) as conn:
         cur = conn.execute(
-            """INSERT INTO transactions (product_id, quantity, sale_price, transaction_date)
-               VALUES (?, ?, ?, ?)""",
-            (product_id, quantity, sale_price, _now()),
+            """INSERT INTO transactions (product_id, quantity, sale_price, transaction_date, recorded_by)
+               VALUES (?, ?, ?, ?, ?)""",
+            (product_id, quantity, sale_price, _now(), recorded_by),
         )
         return cur.lastrowid
 
@@ -136,10 +145,16 @@ def list_transactions(product_id=None, db_path=DEFAULT_DB_PATH):
     with get_connection(db_path) as conn:
         if product_id is None:
             return conn.execute(
-                "SELECT * FROM transactions ORDER BY transaction_date DESC"
+                """SELECT transactions.*, users.display_name AS recorded_by_name,
+                          users.username AS recorded_by_username
+                   FROM transactions LEFT JOIN users ON transactions.recorded_by = users.id
+                   ORDER BY transactions.transaction_date DESC"""
             ).fetchall()
         return conn.execute(
-            """SELECT * FROM transactions WHERE product_id = ?
-               ORDER BY transaction_date DESC""",
+            """SELECT transactions.*, users.display_name AS recorded_by_name,
+                      users.username AS recorded_by_username
+               FROM transactions LEFT JOIN users ON transactions.recorded_by = users.id
+               WHERE transactions.product_id = ?
+               ORDER BY transactions.transaction_date DESC""",
             (product_id,),
         ).fetchall()

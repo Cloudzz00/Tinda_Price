@@ -20,7 +20,7 @@ served through a Flask web application instead of a terminal-only tool.
 | Search & Retrieval Interface | `search.py` | Text queries and barcode-scanner input (handled identically) for instant lookup of cost, price, and history, exposed via the search box on every page. |
 | Variance-Flagging Module | `variance.py` | Computes the % margin between supplier cost and retail price per product and flags items whose margin has dropped below a configurable minimum threshold, needing a price review. |
 | Trend-Analysis Forecasting Module | `forecasting.py` | Projects short-term price movement from price history using a simple moving average and a linear-regression trend line. |
-| Web interface | `app.py`, `templates/`, `static/`, `dashboard_metrics.py` | The "Rapid Retrieval Interface" / store terminal from the Technology Architecture phase — an analytics dashboard (price-update calendar, margin chart, risk donut), product pages, and variance report reachable from any device on the store's network. |
+| Web interface | `app.py`, `templates/`, `static/`, `dashboard_metrics.py` | The "Rapid Retrieval Interface" / store terminal from the Technology Architecture phase — sidebar-navigated pages (dashboard, variance report, per-product pages), a notification bell tied to flagged products, and a self-service profile page, reachable from any device on the store's network. |
 | Role-Based Access Control | `auth.py`, `accounts.py` | Session-based login with three roles (admin, supplier, store owner), each scoped to what they're actually responsible for — see [Role-based access](#role-based-access) below. |
 
 `real_data.py` loads the system's only data source: **actual Philippine
@@ -66,6 +66,13 @@ Typical demo flow:
    see cost-only editing, then as **owner** (`owner` / `owner123`) to
    see price-only editing and sale recording — demonstrating the
    workflow the variance-flagging module is built around (see below)
+7. The bell icon in the top bar shows how many products need a price
+   review (scoped to what that role can see) and links straight to
+   them; **My Profile** (sidebar) lets any logged-in user rename
+   themselves and change their password
+8. Every price update and sale now records who made it — visible as
+   "Updated by" / "Recorded by" on each product's history and sales
+   tables
 
 ## Role-based access
 
@@ -158,8 +165,16 @@ only an admin reaches the Users page, and so on).
   it's presented, so the same modules back the web UI today and could
   back a different front end later without changes.
 - **Auth is scoped to a classroom demo.** Passwords are hashed
-  (`werkzeug.security`) and permissions are enforced server-side, but
-  the demo credentials are intentionally public (see the table above),
-  the session secret key is a hardcoded string, and there's no
-  password-reset or account-lockout flow. Treat it as a correct
-  access-control model, not a production auth system.
+  (`werkzeug.security`) and permissions are enforced server-side. Any
+  logged-in user can rename themselves and change their own password
+  from **My Profile**, but the demo credentials are intentionally
+  public (see the table above), the session secret key is a hardcoded
+  string, and there's no email-based "forgot password" recovery or
+  account-lockout flow. Treat it as a correct access-control model, not
+  a production auth system.
+- **Accountability.** `price_history.updated_by` and
+  `transactions.recorded_by` record which user made each change
+  (nullable, so the imported real-market-data rows correctly show no
+  one — nobody at the store entered those). `database.py` migrates
+  these columns into any database file created before this existed, so
+  an older `tinda_price.db` keeps working.

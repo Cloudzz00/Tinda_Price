@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}My Profile - TINDA-PRICE{% endblock %}
+{% block content %}
+  <h1>My Profile</h1>
+  <p class="subtitle">Manage your account details and password.</p>
+
+  <section class="card-grid">
+    <div class="card">
+      <h3>Account Details</h3>
+      <div class="profile-header">
+        <span class="avatar-circle avatar-circle-lg">{{ (current_user.display_name or current_user.username)[:1]|upper }}</span>
+        <div>
+          <strong>{{ current_user.display_name or current_user.username }}</strong>
+          <p class="muted">{{ role_labels[current_user.role] }}</p>
+        </div>
+      </div>
+      <form method="post" class="stacked-form">
+        <input type="hidden" name="action" value="update_profile">
+        <label>Display name <input type="text" name="display_name" value="{{ current_user.display_name }}" required></label>
+        <label>Username <input type="text" value="{{ current_user.username }}" disabled></label>
+        <p class="field-hint">Your username is your login and can't be changed here. Ask an admin if it needs to change.</p>
+        <button type="submit">Save changes</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Change Password</h3>
+      <form method="post" class="stacked-form">
+        <input type="hidden" name="action" value="change_password">
+        <label>Current password <input type="password" name="current_password" required></label>
+        <label>New password <input type="password" name="new_password" required></label>
+        <p class="field-hint">At least 8 characters with a letter and a number.</p>
+        <label>Confirm new password <input type="password" name="confirm_password" required></label>
+        <button type="submit">Update password</button>
+      </form>
+    </div>
+  </section>
+{% endblock %}

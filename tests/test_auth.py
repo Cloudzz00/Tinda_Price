@@ -60,6 +60,19 @@ class TestAuth(unittest.TestCase):
         frank = next(u for u in users if u["id"] == user_id)
         self.assertEqual(frank["supplier_name"], "Acme Co")
 
+    def test_update_display_name(self):
+        user_id = auth.create_user("gina", "pw", "store_owner", "Gina", db_path=self.db_path)
+        auth.update_display_name(user_id, "Gina R.", db_path=self.db_path)
+        user = auth.get_user_by_id(user_id, db_path=self.db_path)
+        self.assertEqual(user["display_name"], "Gina R.")
+
+    def test_update_password_changes_hash_and_verifies(self):
+        user_id = auth.create_user("harry", "old-password", "store_owner", db_path=self.db_path)
+        auth.update_password(user_id, "new-password", db_path=self.db_path)
+        user = auth.get_user_by_id(user_id, db_path=self.db_path)
+        self.assertFalse(auth.verify_password(user, "old-password"))
+        self.assertTrue(auth.verify_password(user, "new-password"))
+
 
 if __name__ == "__main__":
     unittest.main()
