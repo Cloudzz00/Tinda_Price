@@ -6,7 +6,7 @@
     <p class="muted">No suppliers yet. <a href="{{ url_for('new_supplier') }}">Add one first</a>.</p>
   {% else %}
     <form method="post" class="stacked-form">
-      <label>Barcode (scan or type)
+      <label>Barcode (optional)
         <input type="text" name="barcode" placeholder="e.g. 4800016641234">
       </label>
       <label>Product name <input type="text" name="name" required></label>
