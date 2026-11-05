@@ -19,7 +19,9 @@
             <td>{{ '%.2f'|format(r.variance_pct) }}</td>
             <td>{{ '%.2f'|format(r.threshold_pct) }}</td>
             <td>
-              {% if r.flagged %}
+              {% if r.risk_tier == 'critical' %}
+                <span class="badge badge-critical">Selling at a loss</span>
+              {% elif r.risk_tier == 'review' %}
                 <span class="badge badge-warning">Review needed</span>
               {% else %}
                 <span class="badge badge-ok">Healthy</span>

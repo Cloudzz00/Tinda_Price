@@ -14,7 +14,9 @@
       <p>Retail price: <strong>{{ '%.2f'|format(product['retail_price']) }}</strong></p>
       <p>Margin: <strong>{{ '%.2f'|format(variance_result.variance_pct) }}%</strong>
         (minimum required: {{ '%.2f'|format(variance_result.threshold_pct) }}%)</p>
-      {% if variance_result.flagged %}
+      {% if variance_result.risk_tier == 'critical' %}
+        <p class="badge badge-critical">Selling at a loss</p>
+      {% elif variance_result.risk_tier == 'review' %}
         <p class="badge badge-warning">Flagged for price review</p>
       {% else %}
         <p class="badge badge-ok">Margin healthy</p>

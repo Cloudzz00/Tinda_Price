@@ -1,46 +1,194 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - TINDA-PRICE{% endblock %}
 {% block content %}
+  <section class="banner">
+    <div>
+      <h1>{{ greeting }}!</h1>
+      <p>TINDA-PRICE &middot; {{ today_label }}</p>
+    </div>
+    <div class="banner-actions">
+      <a class="btn btn-ghost" href="{{ url_for('new_product') }}">+ Add Product</a>
+      <a class="btn btn-ghost" href="{{ url_for('new_supplier') }}">+ Add Supplier</a>
+    </div>
+  </section>
+
+  <form class="filter-bar" method="get">
+    <span class="filter-label">FILTER</span>
+    <label>Category
+      <select name="category" onchange="this.form.submit()">
+        <option value="">All</option>
+        {% for c in categories %}
+          <option value="{{ c }}" {{ 'selected' if c == category_filter else '' }}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Supplier
+      <select name="supplier_id" onchange="this.form.submit()">
+        <option value="">All</option>
+        {% for s in suppliers %}
+          <option value="{{ s['id'] }}" {{ 'selected' if supplier_filter == s['id']|string else '' }}>{{ s['name'] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <span class="filter-count">{{ total_products }} product{{ '' if total_products == 1 else 's' }}</span>
+  </form>
+
   <section class="stats">
     <div class="stat-card">
       <span class="stat-number">{{ total_products }}</span>
-      <span class="stat-label">Products tracked</span>
+      <span class="stat-label">Products Tracked</span>
     </div>
     <div class="stat-card {{ 'stat-warning' if flagged_count else '' }}">
       <span class="stat-number">{{ flagged_count }}</span>
-      <span class="stat-label">Flagged for price review</span>
+      <span class="stat-label">Flagged for Review</span>
+    </div>
+    <div class="stat-card stat-ok">
+      <span class="stat-number">{{ healthy_count }}</span>
+      <span class="stat-label">Healthy Margin</span>
     </div>
     <div class="stat-card">
-      <span class="stat-number">{{ suppliers|length }}</span>
-      <span class="stat-label">Suppliers</span>
+      <span class="stat-number">{{ avg_margin }}%</span>
+      <span class="stat-label">Average Margin</span>
     </div>
   </section>
 
-  <section class="card-grid">
-    <div class="card">
-      <h3>Sample demo data</h3>
-      <p class="muted">A small, synthetic sari-sari-store catalog for trying out the system end to end.</p>
-      <form method="post" action="{{ url_for('load_seed_data') }}">
-        <button type="submit">Load sample data</button>
-      </form>
+  <section class="dashboard-grid">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <h3><span class="panel-icon warn">!</span> Needs Price Review</h3>
+          <p class="muted">Products below their minimum margin threshold.</p>
+        </div>
+        <a class="btn-link" href="{{ url_for('variance_report') }}">View All ({{ flagged_count }})</a>
+      </div>
+      {% if needs_review %}
+        <table class="data-table">
+          <thead><tr><th>Product</th><th>Cost</th><th>Price</th><th>Margin</th></tr></thead>
+          <tbody>
+            {% for r in needs_review %}
+              <tr>
+                <td><a href="{{ url_for('product_detail', product_id=r.product_id) }}">{{ r.name }}</a></td>
+                <td>{{ '%.2f'|format(r.supplier_cost) }}</td>
+                <td>{{ '%.2f'|format(r.retail_price) }}</td>
+                <td><span class="badge badge-{{ r.risk_tier }}">{{ r.variance_pct }}%</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted">Nothing needs review right now.</p>
+      {% endif %}
     </div>
-    <div class="card">
-      <h3>Real Philippine market data</h3>
-      <p class="muted">
-        Actual monthly retail prices (rice, eggs, garlic, onions, tomatoes, and more)
-        for Metro Manila, Nov 2024&ndash;Nov 2025, from the
-        <a href="https://microdata.worldbank.org/catalog/6172" target="_blank" rel="noopener">World Bank Real-Time Food Price Monitoring</a> dataset.
-        Supplier cost is locked at each item's earliest price in the series to demonstrate variance-flagging on genuine price drift.
-      </p>
-      <form method="post" action="{{ url_for('load_real_data') }}">
-        <button type="submit">Load real market data</button>
-      </form>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <h3><span class="panel-icon">&#128197;</span> Price Update Calendar</h3>
+          <p class="muted">See which days had a price change recorded.</p>
+        </div>
+      </div>
+      <div class="calendar-grid">
+        <div class="calendar-nav">
+          <a href="{{ url_for('dashboard', year=prev_year, month=prev_month, category=category_filter, supplier_id=supplier_filter) }}">&lsaquo;</a>
+          <strong>{{ month_label }}</strong>
+          <a href="{{ url_for('dashboard', year=next_year, month=next_month, category=category_filter, supplier_id=supplier_filter) }}">&rsaquo;</a>
+        </div>
+        <div class="calendar-weekdays">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        {% for week in calendar_weeks %}
+          <div class="calendar-week">
+            {% for cell in week %}
+              <a class="calendar-cell {{ 'calendar-outside' if not cell.in_month else '' }} {{ 'calendar-selected' if cell.iso == selected_date else '' }} {{ 'calendar-today' if cell.iso == today else '' }}"
+                 href="{{ url_for('dashboard', year=cal_year, month=cal_month, date=cell.iso, category=category_filter, supplier_id=supplier_filter) }}">
+                <span>{{ cell.day }}</span>
+                {% if cell.count %}<i class="calendar-dot"></i>{% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="calendar-detail">
+        <strong>{{ selected_date_label }}</strong>
+        {% if selected_entries %}
+          <ul class="calendar-entry-list">
+            {% for e in selected_entries %}
+              <li>
+                <a href="{{ url_for('product_detail', product_id=e['product_id']) }}">{{ e['product_name'] }}</a>
+                <span class="muted">cost {{ '%.2f'|format(e['supplier_cost']) }} &middot; price {{ '%.2f'|format(e['retail_price']) }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="muted">No price updates recorded for this date.</p>
+        {% endif %}
+      </div>
     </div>
   </section>
+
+  <section class="dashboard-grid">
+    <div class="panel">
+      <h3>Margin by Product</h3>
+      <p class="muted">Current margin %, all tracked products.</p>
+      {% if bars %}
+        <div class="bar-chart">
+          {% for b in bars %}
+            <div class="bar-column">
+              <span class="bar-value">{{ b.variance_pct }}%</span>
+              <div class="bar risk-{{ b.risk_tier }}" style="height: {{ b.height_pct }}%;"></div>
+              <span class="bar-label">{{ b.name }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="muted">No products to chart yet.</p>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <h3><span class="panel-icon ok">&#10003;</span> How Products Are Doing</h3>
+      <p class="muted">Who's healthy and who needs a price check.</p>
+      {% if risk_total %}
+        <div class="donut-row">
+          <div class="donut" style="background: conic-gradient({{ donut_gradient }});">
+            <div class="donut-hole">
+              <strong>{{ risk_total }}</strong>
+              <span>Products</span>
+            </div>
+          </div>
+          <ul class="donut-legend">
+            {% for entry in risk_summary %}
+              <li><i class="legend-dot risk-{{ entry.tier }}"></i> {{ entry.label }}
+                <span class="muted">{{ entry.count }} ({{ entry.pct }}%)</span></li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% else %}
+        <p class="muted">No products to summarize yet.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if not all_products %}
+    <section class="card-grid">
+      <div class="card">
+        <h3>Real Philippine market data</h3>
+        <p class="muted">
+          Actual monthly retail prices (rice, eggs, garlic, onions, tomatoes, and more)
+          for Metro Manila, Nov 2024&ndash;Nov 2025, from the
+          <a href="https://microdata.worldbank.org/catalog/6172" target="_blank" rel="noopener">World Bank Real-Time Food Price Monitoring</a> dataset.
+          Supplier cost is locked at each item's earliest price in the series to demonstrate variance-flagging on genuine price drift.
+        </p>
+        <form method="post" action="{{ url_for('load_real_data') }}">
+          <button type="submit">Load real market data</button>
+        </form>
+      </div>
+    </section>
+  {% endif %}
 
   {% if not products %}
     <div class="empty-state">
-      <p>No products recorded yet. Use one of the options above to get started.</p>
+      <p>{{ "No products match this filter." if all_products else "No products loaded yet. Use the option above to get started." }}</p>
     </div>
   {% else %}
     <h2>Products</h2>

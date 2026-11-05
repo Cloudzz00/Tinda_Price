@@ -19,6 +19,7 @@ class VarianceResult:
     variance_pct: float
     threshold_pct: float
     flagged: bool
+    risk_tier: str  # "critical" (selling below cost), "review" (flagged), "healthy"
 
 
 def compute_variance_pct(supplier_cost, retail_price):
@@ -36,6 +37,12 @@ def evaluate_product(product) -> VarianceResult:
     variance_pct = compute_variance_pct(product["supplier_cost"], product["retail_price"])
     threshold_pct = product["variance_threshold_pct"]
     flagged = variance_pct < threshold_pct
+    if variance_pct < 0:
+        risk_tier = "critical"
+    elif flagged:
+        risk_tier = "review"
+    else:
+        risk_tier = "healthy"
     return VarianceResult(
         product_id=product["id"],
         name=product["name"],
@@ -44,6 +51,7 @@ def evaluate_product(product) -> VarianceResult:
         variance_pct=round(variance_pct, 2),
         threshold_pct=threshold_pct,
         flagged=flagged,
+        risk_tier=risk_tier,
     )
 
 
