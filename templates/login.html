@@ -1,24 +1,78 @@
 {% extends "base.html" %}
 {% block title %}Log In - TINDA-PRICE{% endblock %}
+{% block flashes %}{% endblock %}
 {% block content %}
-  <div class="login-wrap">
-    <div class="login-card">
-      <h1>TINDA-PRICE</h1>
-      <p class="muted">Sign in to continue.</p>
-      <form method="post" class="stacked-form">
-        <input type="hidden" name="next" value="{{ next }}">
-        <label>Username <input type="text" name="username" required autofocus></label>
-        <label>Password <input type="password" name="password" required></label>
-        <button type="submit">Log in</button>
-      </form>
-      <div class="demo-accounts">
-        <p class="muted">Demo accounts:</p>
-        <ul>
-          <li><strong>admin</strong> / admin123 &mdash; full access</li>
-          <li><strong>owner</strong> / owner123 &mdash; store owner</li>
-          <li><strong>supplier</strong> / supplier123 &mdash; supplier</li>
-        </ul>
+  <div class="auth-page">
+    <section class="auth-visual">
+      <div class="auth-brand">
+        <span class="auth-brand-mark">&#8369;</span>
+        <span class="auth-brand-text">
+          <strong>TINDA-PRICE</strong>
+          <span>Retail Price Intelligence</span>
+        </span>
       </div>
-    </div>
+
+      <div class="auth-headline">
+        <h1>Tracking prices, protecting margins.</h1>
+        <p>
+          A centralized price database, variance-flagging, and short-term
+          forecasting for small stores &mdash; built on real Philippine
+          retail price data, so suppliers and store owners work from the
+          same numbers.
+        </p>
+      </div>
+
+      <div></div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="auth-card">
+        <h1>Welcome back</h1>
+        <p class="subtitle">Sign in to your account</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flashes">
+              {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form method="post" class="stacked-form">
+          <input type="hidden" name="next" value="{{ next }}">
+          <label>Username <input type="text" name="username" placeholder="Enter your username" required autofocus></label>
+          <label>Password
+            <div class="password-field">
+              <input type="password" name="password" id="password-input" placeholder="Enter your password" required>
+              <button type="button" class="toggle-password" id="toggle-password" aria-label="Show password">&#128065;</button>
+            </div>
+          </label>
+          <div class="auth-row">
+            <label><input type="checkbox" name="remember"> Remember me</label>
+          </div>
+          <button type="submit">Sign in</button>
+        </form>
+
+        <div class="demo-accounts">
+          <p class="muted">Demo accounts:</p>
+          <ul>
+            <li><strong>admin</strong> / admin123 &mdash; full access</li>
+            <li><strong>owner</strong> / owner123 &mdash; store owner</li>
+            <li><strong>supplier</strong> / supplier123 &mdash; supplier</li>
+          </ul>
+        </div>
+      </div>
+    </section>
   </div>
+
+  <script>
+    document.getElementById('toggle-password').addEventListener('click', function () {
+      var input = document.getElementById('password-input');
+      var showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      this.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+    });
+  </script>
 {% endblock %}

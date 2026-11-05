@@ -54,7 +54,7 @@ class TestWebApp(unittest.TestCase):
     def test_dashboard_requires_login(self):
         response = self.client.get("/", follow_redirects=True)
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Sign in to continue", response.data)
+        self.assertIn(b"Sign in to your account", response.data)
 
     def test_login_with_demo_admin_account(self):
         response = self._login("admin", "admin123")
@@ -69,7 +69,7 @@ class TestWebApp(unittest.TestCase):
         self._login("admin", "admin123")
         self.client.post("/logout")
         response = self.client.get("/", follow_redirects=True)
-        self.assertIn(b"Sign in to continue", response.data)
+        self.assertIn(b"Sign in to your account", response.data)
 
     # ---- Basic routes (as admin) ------------------------------------------
 

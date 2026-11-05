@@ -11,7 +11,7 @@ products, user accounts and variance thresholds; a supplier can only
 update the supplier cost of their own products; a store owner sets
 retail price, records sales, and reads the dashboard/reports/forecasts.
 """
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from flask import Flask, render_template, request, redirect, url_for, flash, session, g
 
@@ -37,6 +37,7 @@ def _scope_products_for_user(products, user):
 def create_app():
     app = Flask(__name__)
     app.secret_key = "tinda-price-dev-secret"  # fine for a local/offline student prototype
+    app.permanent_session_lifetime = timedelta(days=30)
 
     with app.app_context():
         init_db(DEFAULT_DB_PATH)
@@ -64,6 +65,7 @@ def create_app():
                 flash("Invalid username or password.", "error")
             else:
                 session.clear()
+                session.permanent = bool(request.form.get("remember"))
                 session["user_id"] = user["id"]
                 flash(f"Welcome, {user['display_name'] or user['username']}!", "success")
                 return redirect(request.form.get("next") or url_for("dashboard"))
