@@ -20,15 +20,14 @@ served through a Flask web application instead of a terminal-only tool.
 | Search & Retrieval Interface | `search.py` | Text queries and barcode-scanner input (handled identically) for instant lookup of cost, price, and history, exposed via the search box on every page. |
 | Variance-Flagging Module | `variance.py` | Computes the % margin between supplier cost and retail price per product and flags items whose margin has dropped below a configurable minimum threshold, needing a price review. |
 | Trend-Analysis Forecasting Module | `forecasting.py` | Projects short-term price movement from price history using a simple moving average and a linear-regression trend line. |
-| Web interface | `app.py`, `templates/`, `static/` | The "Rapid Retrieval Interface" / store terminal from the Technology Architecture phase — a browser-based dashboard, product pages, and variance report reachable from any device on the store's network. |
+| Web interface | `app.py`, `templates/`, `static/`, `dashboard_metrics.py` | The "Rapid Retrieval Interface" / store terminal from the Technology Architecture phase — an analytics dashboard (price-update calendar, margin chart, risk donut), product pages, and variance report reachable from any device on the store's network. |
 
-`seed.py` loads sample sari-sari-store data (products, suppliers, a short
-price history) for a quick pilot demo, matching the Opportunities &
-Migration phase's plan to encode existing price data — triggered from
-the dashboard's "Load sample data" button.
-
-`real_data.py` loads **actual Philippine retail prices** instead of
-synthetic numbers — see [Real Philippine market data](#real-philippine-market-data) below.
+`real_data.py` loads the system's only data source: **actual Philippine
+retail prices**, not synthetic numbers — see
+[Real Philippine market data](#real-philippine-market-data) below. It's
+triggered from the dashboard's "Load real market data" button, which
+only appears while the database is empty (the load is also idempotent,
+so it's safe either way).
 
 ## Requirements
 
@@ -50,21 +49,25 @@ creates `tinda_price.db` in the project folder.
 
 Typical demo flow:
 
-1. Dashboard — click **Load sample data** to seed products and suppliers
-2. Use the search box (top bar) to look up a product by name, category,
+1. Dashboard — click **Load real market data** to load real Philippine
+   retail prices (see below)
+2. The dashboard's stat cards, "Needs Price Review" list, price-update
+   calendar, margin chart, and risk donut all update to reflect it;
+   use the category/supplier filters to narrow any of them
+3. Use the search box (top bar) to look up a product by name, category,
    or barcode
-3. Open a product page to view its current price, price history, and
+4. Open a product page to view its current price, price history, and
    short-term forecast (moving average + linear regression)
-4. **Variance Report** — see which products have a margin below their
-   configured threshold and need a price review
-5. From a product page, update its supplier cost/retail price (logged
+5. **Variance Report** — see every product's margin against its
+   configured threshold
+6. From a product page, update its supplier cost/retail price (logged
    to history automatically) or record a sale
 
 ## Real Philippine market data
 
-Alongside the synthetic demo data, the dashboard has a **Load real market
-data** button that seeds products from actual published Philippine
-retail prices instead of made-up numbers:
+The dashboard's **Load real market data** button loads the system's
+product catalog from actual published Philippine retail prices instead
+of made-up numbers:
 
 - **Source:** [World Bank Real-Time Food Price Monitoring (Philippines)](https://microdata.worldbank.org/catalog/6172),
   dataset version 2025-11-24.

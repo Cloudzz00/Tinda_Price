@@ -13,7 +13,6 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from database import DEFAULT_DB_PATH, init_db
 import repository
 import search as search_module
-import seed as seed_module
 import real_data as real_data_module
 import variance
 import forecasting
@@ -70,6 +69,7 @@ def create_app():
         return render_template(
             "dashboard.html",
             products=products,
+            all_products=all_products,
             total_products=len(products),
             flagged_count=len(flagged),
             healthy_count=len(products) - len(flagged),
@@ -194,12 +194,6 @@ def create_app():
         results = [variance.evaluate_product(p) for p in products]
         results.sort(key=lambda r: r.flagged, reverse=True)
         return render_template("variance_report.html", results=results)
-
-    @app.route("/seed", methods=["POST"])
-    def load_seed_data():
-        seed_module.seed()
-        flash("Sample data loaded.", "success")
-        return redirect(url_for("dashboard"))
 
     @app.route("/seed-real-data", methods=["POST"])
     def load_real_data():
