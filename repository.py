@@ -99,6 +99,18 @@ def get_price_history(product_id, db_path=DEFAULT_DB_PATH):
         ).fetchall()
 
 
+def list_all_price_history(db_path=DEFAULT_DB_PATH):
+    """Every price-history entry across all products, newest first, with
+    the product name attached. Used to build the dashboard's price-update
+    calendar."""
+    with get_connection(db_path) as conn:
+        return conn.execute(
+            """SELECT price_history.*, products.name AS product_name
+               FROM price_history JOIN products ON price_history.product_id = products.id
+               ORDER BY price_history.recorded_at DESC"""
+        ).fetchall()
+
+
 # ---- Transactions ----------------------------------------------------------
 
 def add_transaction(product_id, quantity, sale_price, db_path=DEFAULT_DB_PATH):
