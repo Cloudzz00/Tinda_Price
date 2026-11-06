@@ -7,7 +7,7 @@
     {% if results %}
       <table class="data-table">
         <thead>
-          <tr><th>Name</th><th>Category</th><th>Barcode</th><th>Supplier</th><th>Cost</th><th>Price</th><th></th></tr>
+          <tr><th>Name</th><th>Category</th><th>Barcode</th><th>Supplier</th><th>Cost</th>{% if current_user.role != 'supplier' %}<th>Price</th>{% endif %}<th></th></tr>
         </thead>
         <tbody>
           {% for p in results %}
@@ -17,7 +17,7 @@
               <td>{{ p['barcode'] or '-' }}</td>
               <td>{{ p['supplier_name'] }}</td>
               <td>{{ '%.2f'|format(p['supplier_cost']) }}</td>
-              <td>{{ '%.2f'|format(p['retail_price']) }}</td>
+              {% if current_user.role != 'supplier' %}<td>{{ '%.2f'|format(p['retail_price']) }}</td>{% endif %}
               <td><a href="{{ url_for('product_detail', product_id=p['id']) }}">View</a></td>
             </tr>
           {% endfor %}

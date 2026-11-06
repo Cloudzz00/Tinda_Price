@@ -10,6 +10,12 @@ Access is role-based (see auth.py): an admin manages suppliers,
 products, user accounts and variance thresholds; a supplier can only
 update the supplier cost of their own products; a store owner sets
 retail price, records sales, and reads the dashboard/reports/forecasts.
+
+A supplier's view is also stripped of anything margin-derived --
+retail price, margin %, variance-flagging, forecasts, the analytics
+charts, and sales -- since those reveal the store's markup and profit
+on the supplier's own goods. See the `current_user.role != 'supplier'`
+checks throughout the templates.
 """
 from datetime import date, datetime, timedelta
 
@@ -61,7 +67,9 @@ def create_app():
     @app.context_processor
     def _inject_user():
         context = {"current_user": g.get("user"), "role_labels": auth.ROLE_LABELS}
-        if g.get("user") and request.endpoint != "login":
+        # Flagging is derived from margin (retail price vs. supplier cost),
+        # which is the store's business -- a supplier never sees it.
+        if g.get("user") and request.endpoint != "login" and g.user["role"] != "supplier":
             all_flagged, top_flagged = _notifications_for_user(g.user)
             context["notifications_count"] = len(all_flagged)
             context["notifications_items"] = top_flagged
@@ -307,7 +315,7 @@ def create_app():
         return redirect(url_for("product_detail", product_id=product_id))
 
     @app.route("/variance")
-    @auth.login_required
+    @auth.roles_required("admin", "store_owner")
     def variance_report():
         products = _scope_products_for_user(repository.list_products(), g.user)
         results = [variance.evaluate_product(p) for p in products]

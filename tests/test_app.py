@@ -277,6 +277,56 @@ class TestWebApp(unittest.TestCase):
         transactions = repository.list_transactions(product["id"])
         self.assertEqual(transactions[0]["recorded_by_name"], "System Admin")
 
+    # ---- Supplier can't see margin/profit data -----------------------------
+
+    def _link_supplier_account(self, supplier):
+        supplier_user = auth.get_user_by_username("supplier")
+        auth.set_user_supplier(supplier_user["id"], supplier["id"])
+
+    def test_supplier_cannot_reach_variance_report(self):
+        self._login("supplier", "supplier123")
+        response = self.client.get("/variance", follow_redirects=True)
+        self.assertIn(b"permission to do that", response.data)
+
+    def test_supplier_dashboard_hides_margin_and_price(self):
+        product, supplier = self._add_product_as_admin()
+        self._link_supplier_account(supplier)
+        self._login("supplier", "supplier123")
+        response = self.client.get("/")
+        self.assertNotIn(b"Flagged for Review", response.data)
+        self.assertNotIn(b"Margin by Product", response.data)
+        self.assertNotIn(b"How Products Are Doing", response.data)
+        self.assertNotIn(b"Needs Price Review", response.data)
+        # The product's retail price (15.00) must not leak into the page.
+        self.assertNotIn(b"15.00", response.data)
+
+    def test_supplier_product_page_hides_retail_price_and_forecast(self):
+        product, supplier = self._add_product_as_admin()
+        self._link_supplier_account(supplier)
+        self._login("supplier", "supplier123")
+        response = self.client.get(f"/products/{product['id']}")
+        self.assertNotIn(b"Retail price:", response.data)
+        self.assertNotIn(b"Margin:", response.data)
+        self.assertNotIn(b"Short-Term Forecast", response.data)
+        self.assertNotIn(b"Recent Sales", response.data)
+        self.assertIn(b"Supplier cost:", response.data)
+
+    def test_supplier_has_no_notification_bell(self):
+        product, supplier = self._add_product_as_admin()
+        self._link_supplier_account(supplier)
+        self.client.post(f"/products/{product['id']}/update-price", data={"retail_price": "10.5"})
+        self._login("supplier", "supplier123")
+        response = self.client.get("/")
+        self.assertNotIn(b"notif-bell", response.data)
+
+    def test_owner_dashboard_still_shows_margin_analytics(self):
+        self._add_product_as_admin()
+        self._login("owner", "owner123")
+        response = self.client.get("/")
+        self.assertIn(b"Margin by Product", response.data)
+        self.assertIn(b"How Products Are Doing", response.data)
+        self.assertIn(b"notif-bell", response.data)
+
 
 if __name__ == "__main__":
     unittest.main()

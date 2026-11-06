@@ -40,49 +40,53 @@
   <section class="stats">
     <div class="stat-card">
       <span class="stat-number">{{ total_products }}</span>
-      <span class="stat-label">Products Tracked</span>
+      <span class="stat-label">{{ 'Products Supplied' if current_user.role == 'supplier' else 'Products Tracked' }}</span>
     </div>
-    <div class="stat-card {{ 'stat-warning' if flagged_count else '' }}">
-      <span class="stat-number">{{ flagged_count }}</span>
-      <span class="stat-label">Flagged for Review</span>
-    </div>
-    <div class="stat-card stat-ok">
-      <span class="stat-number">{{ healthy_count }}</span>
-      <span class="stat-label">Healthy Margin</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-number">{{ avg_margin }}%</span>
-      <span class="stat-label">Average Margin</span>
-    </div>
+    {% if current_user.role != 'supplier' %}
+      <div class="stat-card {{ 'stat-warning' if flagged_count else '' }}">
+        <span class="stat-number">{{ flagged_count }}</span>
+        <span class="stat-label">Flagged for Review</span>
+      </div>
+      <div class="stat-card stat-ok">
+        <span class="stat-number">{{ healthy_count }}</span>
+        <span class="stat-label">Healthy Margin</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number">{{ avg_margin }}%</span>
+        <span class="stat-label">Average Margin</span>
+      </div>
+    {% endif %}
   </section>
 
   <section class="dashboard-grid">
-    <div class="panel">
-      <div class="panel-header">
-        <div>
-          <h3><span class="panel-icon warn">!</span> Needs Price Review</h3>
-          <p class="muted">Products below their minimum margin threshold.</p>
+    {% if current_user.role != 'supplier' %}
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <h3><span class="panel-icon warn">!</span> Needs Price Review</h3>
+            <p class="muted">Products below their minimum margin threshold.</p>
+          </div>
+          <a class="btn-link" href="{{ url_for('variance_report') }}">View All ({{ flagged_count }})</a>
         </div>
-        <a class="btn-link" href="{{ url_for('variance_report') }}">View All ({{ flagged_count }})</a>
+        {% if needs_review %}
+          <table class="data-table">
+            <thead><tr><th>Product</th><th>Cost</th><th>Price</th><th>Margin</th></tr></thead>
+            <tbody>
+              {% for r in needs_review %}
+                <tr>
+                  <td><a href="{{ url_for('product_detail', product_id=r.product_id) }}">{{ r.name }}</a></td>
+                  <td>{{ '%.2f'|format(r.supplier_cost) }}</td>
+                  <td>{{ '%.2f'|format(r.retail_price) }}</td>
+                  <td><span class="badge badge-{{ r.risk_tier }}">{{ r.variance_pct }}%</span></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="muted">Nothing needs review right now.</p>
+        {% endif %}
       </div>
-      {% if needs_review %}
-        <table class="data-table">
-          <thead><tr><th>Product</th><th>Cost</th><th>Price</th><th>Margin</th></tr></thead>
-          <tbody>
-            {% for r in needs_review %}
-              <tr>
-                <td><a href="{{ url_for('product_detail', product_id=r.product_id) }}">{{ r.name }}</a></td>
-                <td>{{ '%.2f'|format(r.supplier_cost) }}</td>
-                <td>{{ '%.2f'|format(r.retail_price) }}</td>
-                <td><span class="badge badge-{{ r.risk_tier }}">{{ r.variance_pct }}%</span></td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <p class="muted">Nothing needs review right now.</p>
-      {% endif %}
-    </div>
+    {% endif %}
 
     <div class="panel">
       <div class="panel-header">
@@ -119,7 +123,8 @@
             {% for e in selected_entries %}
               <li>
                 <a href="{{ url_for('product_detail', product_id=e['product_id']) }}">{{ e['product_name'] }}</a>
-                <span class="muted">cost {{ '%.2f'|format(e['supplier_cost']) }} &middot; price {{ '%.2f'|format(e['retail_price']) }}
+                <span class="muted">cost {{ '%.2f'|format(e['supplier_cost']) }}
+                  {% if current_user.role != 'supplier' %} &middot; price {{ '%.2f'|format(e['retail_price']) }}{% endif %}
                   {% if e['updated_by_name'] or e['updated_by_username'] %} &middot; by {{ e['updated_by_name'] or e['updated_by_username'] }}{% endif %}</span>
               </li>
             {% endfor %}
@@ -131,48 +136,50 @@
     </div>
   </section>
 
-  <section class="dashboard-grid">
-    <div class="panel">
-      <h3>Margin by Product</h3>
-      <p class="muted">Current margin %, all tracked products.</p>
-      {% if bars %}
-        <div class="bar-chart">
-          {% for b in bars %}
-            <div class="bar-column">
-              <span class="bar-value">{{ b.variance_pct }}%</span>
-              <div class="bar risk-{{ b.risk_tier }}" style="height: {{ b.height_pct }}%;"></div>
-              <span class="bar-label">{{ b.name }}</span>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p class="muted">No products to chart yet.</p>
-      {% endif %}
-    </div>
-
-    <div class="panel">
-      <h3><span class="panel-icon ok">&#10003;</span> How Products Are Doing</h3>
-      <p class="muted">Who's healthy and who needs a price check.</p>
-      {% if risk_total %}
-        <div class="donut-row">
-          <div class="donut" style="background: conic-gradient({{ donut_gradient }});">
-            <div class="donut-hole">
-              <strong>{{ risk_total }}</strong>
-              <span>Products</span>
-            </div>
-          </div>
-          <ul class="donut-legend">
-            {% for entry in risk_summary %}
-              <li><i class="legend-dot risk-{{ entry.tier }}"></i> {{ entry.label }}
-                <span class="muted">{{ entry.count }} ({{ entry.pct }}%)</span></li>
+  {% if current_user.role != 'supplier' %}
+    <section class="dashboard-grid">
+      <div class="panel">
+        <h3>Margin by Product</h3>
+        <p class="muted">Current margin %, all tracked products.</p>
+        {% if bars %}
+          <div class="bar-chart">
+            {% for b in bars %}
+              <div class="bar-column">
+                <span class="bar-value">{{ b.variance_pct }}%</span>
+                <div class="bar risk-{{ b.risk_tier }}" style="height: {{ b.height_pct }}%;"></div>
+                <span class="bar-label">{{ b.name }}</span>
+              </div>
             {% endfor %}
-          </ul>
-        </div>
-      {% else %}
-        <p class="muted">No products to summarize yet.</p>
-      {% endif %}
-    </div>
-  </section>
+          </div>
+        {% else %}
+          <p class="muted">No products to chart yet.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel">
+        <h3><span class="panel-icon ok">&#10003;</span> How Products Are Doing</h3>
+        <p class="muted">Who's healthy and who needs a price check.</p>
+        {% if risk_total %}
+          <div class="donut-row">
+            <div class="donut" style="background: conic-gradient({{ donut_gradient }});">
+              <div class="donut-hole">
+                <strong>{{ risk_total }}</strong>
+                <span>Products</span>
+              </div>
+            </div>
+            <ul class="donut-legend">
+              {% for entry in risk_summary %}
+                <li><i class="legend-dot risk-{{ entry.tier }}"></i> {{ entry.label }}
+                  <span class="muted">{{ entry.count }} ({{ entry.pct }}%)</span></li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% else %}
+          <p class="muted">No products to summarize yet.</p>
+        {% endif %}
+      </div>
+    </section>
+  {% endif %}
 
   {% if not all_products and current_user.role == 'admin' %}
     <section class="card-grid">
@@ -209,7 +216,7 @@
           <th>Barcode</th>
           <th>Supplier</th>
           <th>Cost</th>
-          <th>Price</th>
+          {% if current_user.role != 'supplier' %}<th>Price</th>{% endif %}
           <th></th>
         </tr>
       </thead>
@@ -221,7 +228,7 @@
             <td>{{ p['barcode'] or '-' }}</td>
             <td>{{ p['supplier_name'] }}</td>
             <td>{{ '%.2f'|format(p['supplier_cost']) }}</td>
-            <td>{{ '%.2f'|format(p['retail_price']) }}</td>
+            {% if current_user.role != 'supplier' %}<td>{{ '%.2f'|format(p['retail_price']) }}</td>{% endif %}
             <td><a href="{{ url_for('product_detail', product_id=p['id']) }}">View</a></td>
           </tr>
         {% endfor %}
