@@ -80,9 +80,9 @@ Three roles, matching how a real store/supplier relationship works:
 
 | Role | Can do | Can't do |
 |---|---|---|
-| **Admin** | Manage suppliers, products, user accounts, and variance thresholds; full read access to everything | — |
-| **Supplier** | Update the **supplier cost** of the products tied to their own supplier record; view their own products, history, and forecasts | Touch retail price; see or edit another supplier's products; add suppliers/products/users; record sales |
-| **Store Owner** | Set **retail price**; record sales; view the full dashboard, reports, and forecasts | Touch supplier cost; manage suppliers/products/users |
+| **Admin** | Manage suppliers, products, user accounts, and variance thresholds; review and approve/reject supplier product requests; full read access to everything | — |
+| **Supplier** | Update the **supplier cost** of products tied to their own supplier record; submit a request for a new product they carry; view their own products and cost history | Touch retail price; see or edit another supplier's products; add a product directly (see below); see margin, flags, charts, forecasts, or sales — those are the store's business, not the supplier's |
+| **Store Owner** | Set **retail price**; record sales; view the full dashboard, reports, and forecasts | Touch supplier cost; manage suppliers/products/users; approve product requests |
 
 This isn't just an access-control checkbox — it mirrors the actual
 workflow TINDA-PRICE's variance-flagging module exists for: a supplier
@@ -93,6 +93,16 @@ Every permission boundary is enforced server-side in `app.py`
 (`auth.login_required` / `auth.roles_required`), not just hidden in the
 UI — a role-correct form field is also defense in depth, not the only
 line of defense.
+
+**Adding a new product** goes through a request/approval workflow, not
+direct creation, since catalog control stays with the store: a
+supplier submits a request (**Request Product** in the sidebar) with
+the product's name, category, and their cost; it shows up on the
+admin's **Product Requests** page (with a pending-count badge, like
+the notification bell) where they set the retail price and threshold
+and **Approve** it into the live catalog, or **Reject** it with an
+optional reason. Either way the supplier sees the outcome on **My
+Requests**. See `product_requests` in `database.py`/`repository.py`.
 
 Demo accounts (seeded automatically, see `accounts.py`):
 

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Product Requests - TINDA-PRICE{% endblock %}
+{% block content %}
+  <h1>Product Requests</h1>
+  {% if current_user.role == 'admin' %}
+    <p class="subtitle">New products suppliers want to start carrying.</p>
+  {% else %}
+    <p class="subtitle">Products you've requested, and their review status.</p>
+  {% endif %}
+
+  {% set pending = requests|selectattr('status', 'equalto', 'pending')|list %}
+  {% set reviewed = requests|rejectattr('status', 'equalto', 'pending')|list %}
+
+  {% if current_user.role == 'admin' %}
+    <h2>Pending ({{ pending|length }})</h2>
+    {% if pending %}
+      <section class="card-grid">
+        {% for r in pending %}
+          <div class="card">
+            <h3>{{ r['name'] }}</h3>
+            <p class="muted">{{ r['category'] or 'Uncategorized' }} &middot; from {{ r['supplier_name'] }}</p>
+            <p>Supplier cost: <strong>{{ '%.2f'|format(r['supplier_cost']) }}</strong></p>
+            <p class="muted">Requested by {{ r['requested_by_name'] or r['requested_by_username'] or '-' }} on {{ r['requested_at'] }}</p>
+
+            <form method="post" action="{{ url_for('approve_product_request', request_id=r['id']) }}" class="inline-form">
+              <label>Retail price <input type="number" step="0.01" name="retail_price" required></label>
+              <label>Minimum margin threshold % <input type="number" step="0.01" name="variance_threshold_pct" value="15"></label>
+              <button type="submit">Approve</button>
+            </form>
+            <form method="post" action="{{ url_for('reject_product_request', request_id=r['id']) }}" class="inline-form">
+              <label>Reason (optional) <input type="text" name="reason" placeholder="e.g. already carried by another supplier"></label>
+              <button type="submit" class="btn-danger">Reject</button>
+            </form>
+          </div>
+        {% endfor %}
+      </section>
+    {% else %}
+      <p class="muted">No pending requests.</p>
+    {% endif %}
+  {% else %}
+    {% if pending %}
+      <h2>Pending ({{ pending|length }})</h2>
+      <table class="data-table">
+        <thead><tr><th>Product</th><th>Category</th><th>Your cost</th><th>Requested at</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for r in pending %}
+            <tr>
+              <td>{{ r['name'] }}</td>
+              <td>{{ r['category'] or '-' }}</td>
+              <td>{{ '%.2f'|format(r['supplier_cost']) }}</td>
+              <td>{{ r['requested_at'] }}</td>
+              <td><span class="badge badge-review">Pending</span></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  {% endif %}
+
+  <h2>{{ 'Reviewed' if current_user.role == 'admin' else 'Past Requests' }}</h2>
+  {% if reviewed %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          {% if current_user.role == 'admin' %}<th>Supplier</th>{% endif %}
+          <th>Cost</th>
+          <th>Status</th>
+          <th>Reviewed by</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reviewed %}
+          <tr>
+            <td>
+              {% if r['status'] == 'approved' and r['product_id'] %}
+                <a href="{{ url_for('product_detail', product_id=r['product_id']) }}">{{ r['name'] }}</a>
+              {% else %}
+                {{ r['name'] }}
+              {% endif %}
+            </td>
+            {% if current_user.role == 'admin' %}<td>{{ r['supplier_name'] }}</td>{% endif %}
+            <td>{{ '%.2f'|format(r['supplier_cost']) }}</td>
+            <td>
+              {% if r['status'] == 'approved' %}
+                <span class="badge badge-ok">Approved</span>
+              {% else %}
+                <span class="badge badge-critical">Rejected</span>
+              {% endif %}
+            </td>
+            <td>{{ r['reviewed_by_name'] or r['reviewed_by_username'] or '-' }}</td>
+            <td>{{ r['rejection_reason'] or '-' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">Nothing reviewed yet.</p>
+  {% endif %}
+{% endblock %}

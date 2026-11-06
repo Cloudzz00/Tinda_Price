@@ -28,11 +28,23 @@
               <span class="nav-icon">&#9888;</span> Variance Report
             </a>
           {% endif %}
+          {% if current_user.role == 'supplier' %}
+            <a class="nav-link {{ 'active' if request.endpoint == 'request_product' else '' }}" href="{{ url_for('request_product') }}">
+              <span class="nav-icon">&#128230;</span> Request Product
+            </a>
+            <a class="nav-link {{ 'active' if request.endpoint == 'product_requests' else '' }}" href="{{ url_for('product_requests') }}">
+              <span class="nav-icon">&#128203;</span> My Requests
+            </a>
+          {% endif %}
 
           {% if current_user.role == 'admin' %}
             <div class="nav-section-label">Manage</div>
             <a class="nav-link {{ 'active' if request.endpoint == 'list_users' else '' }}" href="{{ url_for('list_users') }}">
               <span class="nav-icon">&#128101;</span> Users
+            </a>
+            <a class="nav-link {{ 'active' if request.endpoint == 'product_requests' else '' }}" href="{{ url_for('product_requests') }}">
+              <span class="nav-icon">&#128203;</span> Product Requests
+              {% if pending_requests_count %}<span class="nav-badge">{{ pending_requests_count }}</span>{% endif %}
             </a>
           {% endif %}
 

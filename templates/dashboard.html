@@ -10,6 +10,8 @@
       {% if current_user.role == 'admin' %}
         <a class="btn btn-ghost" href="{{ url_for('new_product') }}">+ Add Product</a>
         <a class="btn btn-ghost" href="{{ url_for('new_supplier') }}">+ Add Supplier</a>
+      {% elif current_user.role == 'supplier' %}
+        <a class="btn btn-ghost" href="{{ url_for('request_product') }}">+ Request Product</a>
       {% endif %}
     </div>
   </section>

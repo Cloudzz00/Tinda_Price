@@ -158,3 +158,108 @@ def list_transactions(product_id=None, db_path=DEFAULT_DB_PATH):
                ORDER BY transactions.transaction_date DESC""",
             (product_id,),
         ).fetchall()
+
+
+# ---- Product requests (supplier proposes, admin approves) ------------------
+
+_REQUEST_SELECT = """
+    SELECT product_requests.*,
+           suppliers.name AS supplier_name,
+           requester.display_name AS requested_by_name,
+           requester.username AS requested_by_username,
+           reviewer.display_name AS reviewed_by_name,
+           reviewer.username AS reviewed_by_username
+    FROM product_requests
+    JOIN suppliers ON product_requests.supplier_id = suppliers.id
+    LEFT JOIN users AS requester ON product_requests.requested_by = requester.id
+    LEFT JOIN users AS reviewer ON product_requests.reviewed_by = reviewer.id
+"""
+
+
+def create_product_request(name, category, barcode, supplier_id, supplier_cost,
+                            requested_by, db_path=DEFAULT_DB_PATH):
+    with get_connection(db_path) as conn:
+        cur = conn.execute(
+            """INSERT INTO product_requests
+               (name, category, barcode, supplier_id, supplier_cost, requested_by, requested_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (name, category, barcode, supplier_id, supplier_cost, requested_by, _now()),
+        )
+        return cur.lastrowid
+
+
+def list_product_requests(status=None, supplier_id=None, db_path=DEFAULT_DB_PATH):
+    query = _REQUEST_SELECT
+    clauses = []
+    params = []
+    if status:
+        clauses.append("product_requests.status = ?")
+        params.append(status)
+    if supplier_id is not None:
+        clauses.append("product_requests.supplier_id = ?")
+        params.append(supplier_id)
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+    query += " ORDER BY product_requests.requested_at DESC"
+    with get_connection(db_path) as conn:
+        return conn.execute(query, params).fetchall()
+
+
+def get_product_request(request_id, db_path=DEFAULT_DB_PATH):
+    with get_connection(db_path) as conn:
+        return conn.execute(
+            _REQUEST_SELECT + " WHERE product_requests.id = ?", (request_id,)
+        ).fetchone()
+
+
+def approve_product_request(request_id, retail_price, variance_threshold_pct,
+                             reviewed_by, db_path=DEFAULT_DB_PATH):
+    """Creates the live product from a pending request and marks it approved.
+    Returns the new product's id."""
+    with get_connection(db_path) as conn:
+        req = conn.execute(
+            "SELECT * FROM product_requests WHERE id = ?", (request_id,)
+        ).fetchone()
+        if req is None:
+            raise ValueError(f"No product request with id {request_id}")
+        if req["status"] != "pending":
+            raise ValueError("This request has already been reviewed")
+
+        cur = conn.execute(
+            """INSERT INTO products
+               (barcode, name, category, supplier_id, supplier_cost,
+                retail_price, variance_threshold_pct)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (req["barcode"], req["name"], req["category"], req["supplier_id"],
+             req["supplier_cost"], retail_price, variance_threshold_pct),
+        )
+        product_id = cur.lastrowid
+        conn.execute(
+            """INSERT INTO price_history (product_id, supplier_cost, retail_price, recorded_at, updated_by)
+               VALUES (?, ?, ?, ?, ?)""",
+            (product_id, req["supplier_cost"], retail_price, _now(), reviewed_by),
+        )
+        conn.execute(
+            """UPDATE product_requests
+               SET status = 'approved', reviewed_by = ?, reviewed_at = ?, product_id = ?
+               WHERE id = ?""",
+            (reviewed_by, _now(), product_id, request_id),
+        )
+        return product_id
+
+
+def reject_product_request(request_id, reviewed_by, reason, db_path=DEFAULT_DB_PATH):
+    with get_connection(db_path) as conn:
+        req = conn.execute(
+            "SELECT * FROM product_requests WHERE id = ?", (request_id,)
+        ).fetchone()
+        if req is None:
+            raise ValueError(f"No product request with id {request_id}")
+        if req["status"] != "pending":
+            raise ValueError("This request has already been reviewed")
+        conn.execute(
+            """UPDATE product_requests
+               SET status = 'rejected', reviewed_by = ?, reviewed_at = ?, rejection_reason = ?
+               WHERE id = ?""",
+            (reviewed_by, _now(), reason, request_id),
+        )

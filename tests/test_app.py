@@ -327,6 +327,112 @@ class TestWebApp(unittest.TestCase):
         self.assertIn(b"How Products Are Doing", response.data)
         self.assertIn(b"notif-bell", response.data)
 
+    # ---- Product requests: supplier proposes, admin approves ---------------
+
+    def _submit_request(self, name="Canned Sardines", cost="25.50"):
+        self._login("supplier", "supplier123")
+        self.client.post(
+            "/products/request",
+            data={"name": name, "category": "Canned Goods", "barcode": "", "supplier_cost": cost},
+        )
+        self.client.post("/logout")
+        return repository.list_product_requests()[0]
+
+    def test_supplier_cannot_add_product_directly(self):
+        self._login("supplier", "supplier123")
+        response = self.client.get("/products/new", follow_redirects=True)
+        self.assertIn(b"permission to do that", response.data)
+
+    def test_supplier_can_submit_product_request(self):
+        self._login("admin", "admin123")
+        self.client.post("/suppliers/new", data={"name": "Test Supplier"})
+        supplier = repository.list_suppliers()[0]
+        self.client.post("/logout")
+        self._link_supplier_account(supplier)
+
+        req = self._submit_request()
+        self.assertEqual(req["status"], "pending")
+        self.assertEqual(req["supplier_id"], supplier["id"])
+        self.assertEqual(req["supplier_cost"], 25.5)
+
+    def test_admin_approving_request_creates_live_product(self):
+        self._login("admin", "admin123")
+        self.client.post("/suppliers/new", data={"name": "Test Supplier"})
+        supplier = repository.list_suppliers()[0]
+        self.client.post("/logout")
+        self._link_supplier_account(supplier)
+        req = self._submit_request()
+
+        self._login("admin", "admin123")
+        response = self.client.post(
+            f"/products/requests/{req['id']}/approve",
+            data={"retail_price": "35.00", "variance_threshold_pct": "15"},
+            follow_redirects=True,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        updated_req = repository.get_product_request(req["id"])
+        self.assertEqual(updated_req["status"], "approved")
+        self.assertIsNotNone(updated_req["product_id"])
+
+        product = repository.get_product(updated_req["product_id"])
+        self.assertEqual(product["name"], "Canned Sardines")
+        self.assertEqual(product["retail_price"], 35.0)
+        self.assertEqual(product["supplier_cost"], 25.5)
+
+    def test_admin_rejecting_request_does_not_create_product(self):
+        self._login("admin", "admin123")
+        self.client.post("/suppliers/new", data={"name": "Test Supplier"})
+        supplier = repository.list_suppliers()[0]
+        self.client.post("/logout")
+        self._link_supplier_account(supplier)
+        req = self._submit_request()
+
+        self._login("admin", "admin123")
+        self.client.post(
+            f"/products/requests/{req['id']}/reject", data={"reason": "duplicate item"}
+        )
+        updated_req = repository.get_product_request(req["id"])
+        self.assertEqual(updated_req["status"], "rejected")
+        self.assertEqual(updated_req["rejection_reason"], "duplicate item")
+        self.assertEqual(len(repository.list_products()), 0)
+
+    def test_supplier_only_sees_their_own_requests(self):
+        self._login("admin", "admin123")
+        self.client.post("/suppliers/new", data={"name": "Supplier A"})
+        self.client.post("/suppliers/new", data={"name": "Supplier B"})
+        supplier_a, supplier_b = repository.list_suppliers()
+        self.client.post("/logout")
+
+        self._link_supplier_account(supplier_a)
+        self._submit_request(name="Product From A")
+
+        # A second, unlinked supplier account for Supplier B.
+        auth.create_user("supplier_b", "pw12345a", "supplier", "Supplier B Rep",
+                          supplier_id=supplier_b["id"])
+        self.client.post(
+            "/login", data={"username": "supplier_b", "password": "pw12345a"},
+            follow_redirects=True,
+        )
+        response = self.client.get("/products/requests")
+        self.assertNotIn(b"Product From A", response.data)
+
+    def test_only_admin_can_approve_or_reject(self):
+        self._login("admin", "admin123")
+        self.client.post("/suppliers/new", data={"name": "Test Supplier"})
+        supplier = repository.list_suppliers()[0]
+        self.client.post("/logout")
+        self._link_supplier_account(supplier)
+        req = self._submit_request()
+
+        self._login("owner", "owner123")
+        response = self.client.post(
+            f"/products/requests/{req['id']}/approve",
+            data={"retail_price": "35.00"}, follow_redirects=True,
+        )
+        self.assertIn(b"permission to do that", response.data)
+        self.assertEqual(repository.get_product_request(req["id"])["status"], "pending")
+
 
 if __name__ == "__main__":
     unittest.main()

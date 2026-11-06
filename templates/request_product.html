@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Request a New Product - TINDA-PRICE{% endblock %}
+{% block content %}
+  <h1>Request a New Product</h1>
+  <p class="subtitle">
+    Tell the store about an item you supply. An admin reviews your request,
+    sets the retail price, and approves it before it goes live.
+  </p>
+
+  <form method="post" class="stacked-form">
+    <label>Product name <input type="text" name="name" required></label>
+    <label>Category <input type="text" name="category"></label>
+    <label>Barcode (optional) <input type="text" name="barcode" placeholder="e.g. 4800016641234"></label>
+    <label>Your supplier cost <input type="number" step="0.01" name="supplier_cost" required></label>
+    <button type="submit">Submit request</button>
+  </form>
+{% endblock %}

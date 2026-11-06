@@ -54,6 +54,22 @@ CREATE TABLE IF NOT EXISTS transactions (
     transaction_date TEXT NOT NULL,
     recorded_by INTEGER REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS product_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    category TEXT DEFAULT '',
+    barcode TEXT,
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id),
+    supplier_cost REAL NOT NULL,
+    requested_by INTEGER REFERENCES users(id),
+    requested_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    reviewed_by INTEGER REFERENCES users(id),
+    reviewed_at TEXT,
+    rejection_reason TEXT,
+    product_id INTEGER REFERENCES products(id)
+);
 """
 
 # Columns added after the tables above first shipped. init_db() adds

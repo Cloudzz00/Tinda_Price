@@ -99,6 +99,21 @@ body {
 
 .nav-icon { font-size: 0.95rem; width: 1.1rem; text-align: center; }
 
+.nav-badge {
+  margin-left: auto;
+  background: var(--warn);
+  color: var(--white);
+  font-size: 0.7rem;
+  font-weight: bold;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
 .sidebar-logout {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
@@ -440,6 +455,8 @@ button {
 }
 
 button:hover { opacity: 0.9; }
+
+.btn-danger { background: var(--warn); }
 
 .empty-state {
   background: var(--white);

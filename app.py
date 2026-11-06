@@ -11,6 +11,13 @@ products, user accounts and variance thresholds; a supplier can only
 update the supplier cost of their own products; a store owner sets
 retail price, records sales, and reads the dashboard/reports/forecasts.
 
+A supplier can't add a product directly -- catalog control stays with
+the store -- but can submit a request (name, category, their cost) for
+a new item they carry. An admin reviews it, sets the retail price and
+threshold, and approves or rejects it; only approval creates the live
+product. See product_requests in database.py/repository.py and the
+/products/request, /products/requests* routes below.
+
 A supplier's view is also stripped of anything margin-derived --
 retail price, margin %, variance-flagging, forecasts, the analytics
 charts, and sales -- since those reveal the store's markup and profit
@@ -73,6 +80,8 @@ def create_app():
             all_flagged, top_flagged = _notifications_for_user(g.user)
             context["notifications_count"] = len(all_flagged)
             context["notifications_items"] = top_flagged
+        if g.get("user") and g.user["role"] == "admin":
+            context["pending_requests_count"] = len(repository.list_product_requests(status="pending"))
         return context
 
     # ---- Auth ---------------------------------------------------------
@@ -227,6 +236,64 @@ def create_app():
             flash("Product added.", "success")
             return redirect(url_for("product_detail", product_id=product_id))
         return render_template("new_product.html", suppliers=suppliers)
+
+    # ---- Product requests: supplier proposes, admin approves -------------
+
+    @app.route("/products/request", methods=["GET", "POST"])
+    @auth.roles_required("supplier")
+    def request_product():
+        if request.method == "POST":
+            try:
+                repository.create_product_request(
+                    name=request.form["name"].strip(),
+                    category=request.form.get("category", "").strip(),
+                    barcode=request.form.get("barcode", "").strip() or None,
+                    supplier_id=g.user["supplier_id"],
+                    supplier_cost=float(request.form["supplier_cost"]),
+                    requested_by=g.user["id"],
+                )
+            except (KeyError, ValueError) as exc:
+                flash(f"Could not submit request: {exc}", "error")
+                return render_template("request_product.html")
+            flash("Request submitted. An admin will review it before it goes live.", "success")
+            return redirect(url_for("product_requests"))
+        return render_template("request_product.html")
+
+    @app.route("/products/requests")
+    @auth.roles_required("admin", "supplier")
+    def product_requests():
+        if g.user["role"] == "supplier":
+            requests_ = repository.list_product_requests(supplier_id=g.user["supplier_id"])
+        else:
+            requests_ = repository.list_product_requests()
+        return render_template("product_requests.html", requests=requests_)
+
+    @app.route("/products/requests/<int:request_id>/approve", methods=["POST"])
+    @auth.roles_required("admin")
+    def approve_product_request(request_id):
+        try:
+            retail_price = float(request.form["retail_price"])
+            threshold = float(request.form.get("variance_threshold_pct") or 15.0)
+            product_id = repository.approve_product_request(
+                request_id, retail_price, threshold, reviewed_by=g.user["id"]
+            )
+        except (KeyError, ValueError) as exc:
+            flash(f"Could not approve request: {exc}", "error")
+            return redirect(url_for("product_requests"))
+        flash("Request approved -- product is now live.", "success")
+        return redirect(url_for("product_detail", product_id=product_id))
+
+    @app.route("/products/requests/<int:request_id>/reject", methods=["POST"])
+    @auth.roles_required("admin")
+    def reject_product_request(request_id):
+        reason = request.form.get("reason", "").strip()
+        try:
+            repository.reject_product_request(request_id, reviewed_by=g.user["id"], reason=reason)
+        except ValueError as exc:
+            flash(f"Could not reject request: {exc}", "error")
+        else:
+            flash("Request rejected.", "success")
+        return redirect(url_for("product_requests"))
 
     @app.route("/products/<int:product_id>")
     @auth.login_required
